@@ -41,7 +41,12 @@ def login():
 def dashboard():
     if 'user' not in session:
         return redirect(url_for('login'))
-    return render_template('dashboard.html', user=session['user'], role=session['role'], dept=session['department'])
+    return render_template(
+        'dashboard.html',
+        user=session['user'],
+        role=session['role'],
+        dept=session['department']
+    )
 
 @app.route('/add-income', methods=['GET', 'POST'])
 def add_income():
