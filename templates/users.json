@@ -1,0 +1,6 @@
+{
+  "admin": { "password": "finpass123", "role": "Finance Manager", "department": "Main" },
+  "senior": { "password": "viewpass123", "role": "Senior Pastor", "department": "Main" },
+  "mens_leader": { "password": "mens2025", "role": "Finance Manager", "department": "Men's Fellowship" },
+  "youth_leader": { "password": "youth2025", "role": "Finance Manager", "department": "Youth" }
+}
