@@ -18,5 +18,10 @@
     "password": "youth2025",
     "role": "Finance Manager",
     "department": "Youth"
+ },
+  "sisters_leader": {
+    "password": "sisters2025",
+    "role": "Finance Manager",
+    "department": "Local Sisters Fellowship"
   }
 }
