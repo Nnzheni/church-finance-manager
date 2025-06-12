@@ -139,11 +139,10 @@ def report():
     # Sort by date (most recent first)
     filtered.sort(key=lambda x: x['date'], reverse=True)
 
-    return render_template("report.html", data=filtered, department_filter=department_filter,
-                           from_date=from_date, to_date=to_date)
-@app.route('/report')
+   @app.route('/report')
 def report():
     return "✅ Report page is active!"
+
 
 
 
