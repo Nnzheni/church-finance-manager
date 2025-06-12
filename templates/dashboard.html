@@ -36,6 +36,27 @@
       <p>You are logged in as <strong>{{ user }}</strong>. Use the options above to manage finances.</p>
     </div>
   </div>
+
+  <div class="card shadow mt-4">
+  <div class="card-header bg-warning text-dark">📊 Monthly Budget Summary</div>
+  <div class="card-body">
+    <p><strong>Total Income:</strong> R{{ budget.income }}</p>
+    <p><strong>Total Expenses:</strong> R{{ budget.expense }}</p>
+    <p><strong>Budget Limit:</strong> R{{ budget.limit }}</p>
+    <p>
+      <strong>Remaining Balance:</strong>
+      <span class="{% if budget.remaining < 0 %}text-danger{% else %}text-success{% endif %}">
+        R{{ budget.remaining }}
+      </span>
+    </p>
+    {% if budget.remaining < 0 %}
+    <div class="alert alert-danger mt-3">
+      🚨 You are over budget by R{{ budget.remaining | abs }}!
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 </div>
 </body>
 </html>
