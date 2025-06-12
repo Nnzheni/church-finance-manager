@@ -92,3 +92,53 @@ def logout():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
+    from flask import request
+
+@app.route('/report', methods=['GET', 'POST'])
+def report():
+    # Load logs from JSON files or memory (use your actual source here)
+    try:
+        with open('income.json') as f:
+            income_log = json.load(f)
+    except:
+        income_log = []
+
+    try:
+        with open('expense.json') as f:
+            expense_log = json.load(f)
+    except:
+        expense_log = []
+
+    # Filter form inputs
+    department_filter = request.args.get('department', '')
+    from_date = request.args.get('from_date', '')
+    to_date = request.args.get('to_date', '')
+
+    # Normalize income
+    for i in income_log:
+        i['type'] = 'Income'
+        i['description'] = i.get('note', '')
+    # Normalize expenses
+    for e in expense_log:
+        e['type'] = 'Expense'
+        e['description'] = e.get('category', '')
+
+    combined = income_log + expense_log
+
+    # Apply filters
+    filtered = []
+    for entry in combined:
+        if department_filter and department_filter.lower() not in entry['department'].lower():
+            continue
+        if from_date and entry['date'] < from_date:
+            continue
+        if to_date and entry['date'] > to_date:
+            continue
+        filtered.append(entry)
+
+    # Sort by date (most recent first)
+    filtered.sort(key=lambda x: x['date'], reverse=True)
+
+    return render_template("report.html", data=filtered, department_filter=department_filter,
+                           from_date=from_date, to_date=to_date)
+
