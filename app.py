@@ -22,6 +22,14 @@ def load_json(filename):
 def save_json(filename, data):
     with open(filename, 'w') as f:
         json.dump(data, f, indent=2)
+        BUDGETS_FILE = 'budgets.json'
+
+def load_budgets():
+    return load_json(BUDGETS_FILE)
+
+def get_department_budget(dept_name):
+    budgets = load_budgets()
+    return budgets.get(dept_name, 0)  # Default to 0 if not found
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -41,7 +49,36 @@ def login():
 def dashboard():
     if 'user' not in session:
         return redirect(url_for('login'))
-    return render_template('dashboard.html', user=session['user'], role=session['role'], dept=session['department'])
+
+    dept = session['department']
+    budget = get_department_budget(dept)
+
+    # Load all income and expenses
+    income_log = load_json('income_log.json')
+    expense_log = load_json('expense_log.json')
+
+    # Filter only current department
+    dept_income = [i for i in income_log if i['department'] == dept]
+    dept_expense = [e for e in expense_log if e['department'] == dept]
+
+    # Total calculations
+    total_income = sum(i['amount'] for i in dept_income)
+    total_expense = sum(e['amount'] for e in dept_expense)
+    balance = total_income - total_expense
+    remaining_budget = budget - total_expense
+
+    return render_template(
+        'dashboard.html',
+        user=session['user'],
+        role=session['role'],
+        dept=dept,
+        budget=budget,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance,
+        remaining_budget=remaining_budget
+    )
+
 
 @app.route('/add-income', methods=['GET', 'POST'])
 def add_income():
