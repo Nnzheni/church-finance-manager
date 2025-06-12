@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import json, os, datetime
 
@@ -90,10 +89,6 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
-    from flask import request
-
 @app.route('/report', methods=['GET'])
 def report():
     try:
@@ -141,6 +136,8 @@ def report():
                            department_filter=department_filter,
                            from_date=from_date, to_date=to_date)
 
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
 
 
 
