@@ -141,7 +141,7 @@ def report():
 
     return render_template("report.html", data=filtered, department_filter=department_filter,
                            from_date=from_date, to_date=to_date)
-    @app.route('/report')
+@app.route('/report')
 def report():
     return "✅ Report page is active!"
 
