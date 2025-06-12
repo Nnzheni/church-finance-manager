@@ -32,6 +32,11 @@
       <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
     </div>
   </form>
+<!-- Export Buttons -->
+<div class="mb-3">
+  <a href="{{ url_for('export_excel', department=department_filter, from_date=from_date, to_date=to_date) }}" class="btn btn-success me-2">Export to Excel</a>
+  <a href="{{ url_for('export_pdf', department=department_filter, from_date=from_date, to_date=to_date) }}" class="btn btn-danger">Export to PDF</a>
+</div>
 
   <!-- Table -->
   <table class="table table-bordered table-hover">
