@@ -209,6 +209,33 @@ def export_pdf():
         filtered.append(entry)
 
     return render_template("report_pdf.html", data=filtered)
+    from flask import make_response
+from datetime import datetime
 
+@app.route('/export-pdf')
+def export_pdf():
+    try:
+        with open('income_log.json') as f:
+            income_log = json.load(f)
+    except:
+        income_log = []
 
+    try:
+        with open('expense_log.json') as f:
+            expense_log = json.load(f)
+    except:
+        expense_log = []
+
+    # Tag entries
+    for i in income_log:
+        i['type'] = 'Income'
+        i['description'] = i.get('note', '')
+    for e in expense_log:
+        e['type'] = 'Expense'
+        e['description'] = e.get('category', '')
+
+    combined = income_log + expense_log
+    combined.sort(key=lambda x: x['date'], reverse=True)
+
+    return render_template("report_pdf.html", data=combined, now=datetime.now)
 
