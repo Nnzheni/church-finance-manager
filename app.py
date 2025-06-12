@@ -70,33 +70,44 @@ def dashboard():
         return redirect(url_for('login'))
 
     dept = session['department']
-    budget = get_department_budget(dept)
+
+    # Load budget info from budgets.json
+    try:
+        with open('budgets.json') as f:
+            all_budgets = json.load(f)
+    except:
+        all_budgets = {}
+
+    budget_limit = all_budgets.get(dept, 0)
 
     # Load all income and expenses
     income_log = load_json('income_log.json')
     expense_log = load_json('expense_log.json')
 
-    # Filter only current department
+    # Filter by department
     dept_income = [i for i in income_log if i['department'] == dept]
     dept_expense = [e for e in expense_log if e['department'] == dept]
 
-    # Total calculations
     total_income = sum(i['amount'] for i in dept_income)
     total_expense = sum(e['amount'] for e in dept_expense)
-    balance = total_income - total_expense
-    remaining_budget = budget - total_expense
+    remaining = budget_limit - total_expense
+
+    # Build budget object with properties to be used in HTML
+    budget = {
+        'income': total_income,
+        'expense': total_expense,
+        'limit': budget_limit,
+        'remaining': remaining
+    }
 
     return render_template(
         'dashboard.html',
         user=session['user'],
         role=session['role'],
         dept=dept,
-        budget=budget,
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=balance,
-        remaining_budget=remaining_budget
+        budget=budget
     )
+
 
 
 @app.route('/add-income', methods=['GET', 'POST'])
