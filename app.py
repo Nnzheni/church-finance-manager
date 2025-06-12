@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-import json, os, datetime
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
+import json, os, datetime, io
+import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -40,12 +41,7 @@ def login():
 def dashboard():
     if 'user' not in session:
         return redirect(url_for('login'))
-    return render_template(
-        'dashboard.html',
-        user=session['user'],
-        role=session['role'],
-        dept=session['department']
-    )
+    return render_template('dashboard.html', user=session['user'], role=session['role'], dept=session['department'])
 
 @app.route('/add-income', methods=['GET', 'POST'])
 def add_income():
@@ -91,31 +87,18 @@ def logout():
 
 @app.route('/report', methods=['GET'])
 def report():
-    try:
-        with open('income_log.json') as f:
-            income_log = json.load(f)
-    except:
-        income_log = []
+    income_log = load_json('income_log.json')
+    expense_log = load_json('expense_log.json')
 
-    try:
-        with open('expense_log.json') as f:
-            expense_log = json.load(f)
-    except:
-        expense_log = []
-
-    # Normalize income
     for i in income_log:
         i['type'] = 'Income'
         i['description'] = i.get('note', '')
-
-    # Normalize expenses
     for e in expense_log:
         e['type'] = 'Expense'
         e['description'] = e.get('category', '')
 
     combined = income_log + expense_log
 
-    # Filter form inputs
     department_filter = request.args.get('department', '')
     from_date = request.args.get('from_date', '')
     to_date = request.args.get('to_date', '')
@@ -136,15 +119,8 @@ def report():
                            department_filter=department_filter,
                            from_date=from_date, to_date=to_date)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
-from flask import send_file
-import io
-import pandas as pd
-
 @app.route('/export-excel')
 def export_excel():
-    # Filtered data logic
     department = request.args.get('department', '')
     from_date = request.args.get('from_date', '')
     to_date = request.args.get('to_date', '')
@@ -181,7 +157,8 @@ def export_excel():
 
 @app.route('/export-pdf')
 def export_pdf():
-    # Reuse filtered data
+    from datetime import datetime
+
     department = request.args.get('department', '')
     from_date = request.args.get('from_date', '')
     to_date = request.args.get('to_date', '')
@@ -208,34 +185,8 @@ def export_pdf():
             continue
         filtered.append(entry)
 
-    return render_template("report_pdf.html", data=filtered)
-    from flask import make_response
-from datetime import datetime
+    filtered.sort(key=lambda x: x['date'], reverse=True)
+    return render_template("report_pdf.html", data=filtered, now=datetime.now)
 
-@app.route('/export-pdf')
-def export_pdf():
-    try:
-        with open('income_log.json') as f:
-            income_log = json.load(f)
-    except:
-        income_log = []
-
-    try:
-        with open('expense_log.json') as f:
-            expense_log = json.load(f)
-    except:
-        expense_log = []
-
-    # Tag entries
-    for i in income_log:
-        i['type'] = 'Income'
-        i['description'] = i.get('note', '')
-    for e in expense_log:
-        e['type'] = 'Expense'
-        e['description'] = e.get('category', '')
-
-    combined = income_log + expense_log
-    combined.sort(key=lambda x: x['date'], reverse=True)
-
-    return render_template("report_pdf.html", data=combined, now=datetime.now)
-Add export_pdf route
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
