@@ -44,6 +44,24 @@ def login():
             return redirect(url_for('dashboard'))
         flash("Invalid login credentials", "danger")
     return render_template('login.html')
+def calculate_budget():
+    income_data = load_json('income_log.json')
+    expense_data = load_json('expense_log.json')
+
+    current_month = datetime.datetime.now().strftime('%Y-%m')
+
+    total_income = sum(i['amount'] for i in income_data if i['date'].startswith(current_month))
+    total_expense = sum(e['amount'] for e in expense_data if e['date'].startswith(current_month))
+
+    budget_limit = total_income  # You can adjust this to a fixed amount if needed
+    remaining = budget_limit - total_expense
+
+    return {
+        'income': round(total_income, 2),
+        'expense': round(total_expense, 2),
+        'limit': round(budget_limit, 2),
+        'remaining': round(remaining, 2)
+    }
 
 @app.route('/dashboard')
 def dashboard():
