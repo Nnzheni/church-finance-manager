@@ -138,6 +138,77 @@ def report():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
+from flask import send_file
+import io
+import pandas as pd
+
+@app.route('/export-excel')
+def export_excel():
+    # Filtered data logic
+    department = request.args.get('department', '')
+    from_date = request.args.get('from_date', '')
+    to_date = request.args.get('to_date', '')
+
+    income = load_json('income_log.json')
+    expenses = load_json('expense_log.json')
+
+    for i in income:
+        i['type'] = 'Income'
+        i['description'] = i.get('note', '')
+    for e in expenses:
+        e['type'] = 'Expense'
+        e['description'] = e.get('category', '')
+
+    combined = income + expenses
+    filtered = []
+
+    for entry in combined:
+        if department and department.lower() not in entry['department'].lower():
+            continue
+        if from_date and entry['date'] < from_date:
+            continue
+        if to_date and entry['date'] > to_date:
+            continue
+        filtered.append(entry)
+
+    df = pd.DataFrame(filtered)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Finance Report')
+
+    output.seek(0)
+    return send_file(output, download_name="finance_report.xlsx", as_attachment=True)
+
+@app.route('/export-pdf')
+def export_pdf():
+    # Reuse filtered data
+    department = request.args.get('department', '')
+    from_date = request.args.get('from_date', '')
+    to_date = request.args.get('to_date', '')
+
+    income = load_json('income_log.json')
+    expenses = load_json('expense_log.json')
+
+    for i in income:
+        i['type'] = 'Income'
+        i['description'] = i.get('note', '')
+    for e in expenses:
+        e['type'] = 'Expense'
+        e['description'] = e.get('category', '')
+
+    combined = income + expenses
+    filtered = []
+
+    for entry in combined:
+        if department and department.lower() not in entry['department'].lower():
+            continue
+        if from_date and entry['date'] < from_date:
+            continue
+        if to_date and entry['date'] > to_date:
+            continue
+        filtered.append(entry)
+
+    return render_template("report_pdf.html", data=filtered)
 
 
 
