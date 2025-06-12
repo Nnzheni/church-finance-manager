@@ -70,44 +70,50 @@ def dashboard():
         return redirect(url_for('login'))
 
     dept = session['department']
+    budget_limit = get_department_budget(dept)
 
-    # Load budget info from budgets.json
-    try:
-        with open('budgets.json') as f:
-            all_budgets = json.load(f)
-    except:
-        all_budgets = {}
+    # Filter values from URL
+    month = int(request.args.get('month', datetime.datetime.now().month))
+    year = int(request.args.get('year', datetime.datetime.now().year))
 
-    budget_limit = all_budgets.get(dept, 0)
-
-    # Load all income and expenses
+    # Load logs
     income_log = load_json('income_log.json')
     expense_log = load_json('expense_log.json')
 
-    # Filter by department
-    dept_income = [i for i in income_log if i['department'] == dept]
-    dept_expense = [e for e in expense_log if e['department'] == dept]
+    # Filter by department and selected month/year
+    dept_income = [
+        i for i in income_log
+        if i['department'] == dept and datetime.datetime.strptime(i['date'], '%Y-%m-%d %H:%M:%S').month == month and datetime.datetime.strptime(i['date'], '%Y-%m-%d %H:%M:%S').year == year
+    ]
+    dept_expense = [
+        e for e in expense_log
+        if e['department'] == dept and datetime.datetime.strptime(e['date'], '%Y-%m-%d %H:%M:%S').month == month and datetime.datetime.strptime(e['date'], '%Y-%m-%d %H:%M:%S').year == year
+    ]
 
-    total_income = sum(i['amount'] for i in dept_income)
-    total_expense = sum(e['amount'] for e in dept_expense)
-    remaining = budget_limit - total_expense
+    # Totals
+    income_total = sum(i['amount'] for i in dept_income)
+    expense_total = sum(e['amount'] for e in dept_expense)
+    remaining = budget_limit - expense_total
 
-    # Build budget object with properties to be used in HTML
-    budget = {
-        'income': total_income,
-        'expense': total_expense,
-        'limit': budget_limit,
-        'remaining': remaining
-    }
+    # Budget object for template
+    class Budget:
+        def __init__(self, income, expense, limit):
+            self.income = income
+            self.expense = expense
+            self.limit = limit
+            self.remaining = limit - expense
+
+    budget = Budget(income_total, expense_total, budget_limit)
 
     return render_template(
         'dashboard.html',
         user=session['user'],
         role=session['role'],
         dept=dept,
-        budget=budget
+        budget=budget,
+        selected_month=month,
+        selected_year=year
     )
-
 
 
 @app.route('/add-income', methods=['GET', 'POST'])
