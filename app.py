@@ -238,4 +238,4 @@ def export_pdf():
     combined.sort(key=lambda x: x['date'], reverse=True)
 
     return render_template("report_pdf.html", data=combined, now=datetime.now)
-
+Add export_pdf route
