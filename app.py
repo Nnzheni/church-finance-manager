@@ -6,6 +6,7 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
 USERS_FILE = 'users.json'
+BUDGETS_FILE = 'budgets.json'
 
 def load_users():
     if os.path.exists(USERS_FILE):
