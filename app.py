@@ -139,7 +139,7 @@ def report():
     # Sort by date (most recent first)
     filtered.sort(key=lambda x: x['date'], reverse=True)
 
-   @app.route('/report')
+@app.route('/report')
 def report():
     return "✅ Report page is active!"
 
