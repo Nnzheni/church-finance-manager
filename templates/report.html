@@ -11,7 +11,14 @@
   <form method="get" class="row g-3 mb-4">
     <div class="col-md-3">
       <label>Department</label>
-      <input type="text" name="department" class="form-control" value="{{ department_filter }}">
+     <select name="department" class="form-control">
+  <option value="">-- All Departments --</option>
+  <option value="Main" {% if department_filter == 'Main' %}selected{% endif %}>Main</option>
+  <option value="Men's Fellowship" {% if department_filter == "Men's Fellowship" %}selected{% endif %}>Men's Fellowship</option>
+  <option value="Youth" {% if department_filter == 'Youth' %}selected{% endif %}>Youth</option>
+  <option value="Local Sisters Fellowship" {% if department_filter == 'Local Sisters Fellowship' %}selected{% endif %}>Local Sisters Fellowship</option>
+</select>
+
     </div>
     <div class="col-md-3">
       <label>From</label>
