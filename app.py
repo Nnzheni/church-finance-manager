@@ -208,7 +208,6 @@ try:
     ])
 except Exception as e:
     print("Google Sheets error (expense):", e)
-
         flash('Expense recorded successfully', 'success')
         return redirect(url_for('dashboard'))
     return render_template('add_expense.html')
