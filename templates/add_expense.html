@@ -22,18 +22,6 @@
       <input type="text" class="form-control" name="note" required>
     </div>
     <button type="submit" class="btn btn-danger">Save Expense</button>
-            try:
-            sheet = get_google_sheet("AFM Finance Expenses")  # Replace with your actual sheet name
-            sheet.append_row([
-                entry['amount'],
-                entry['category'],
-                entry['note'],
-                entry['date'],
-                entry['department']
-            ])
-        except Exception as e:
-            print("Google Sheets error (expense):", e)
-
     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
   </form>
 </div>
