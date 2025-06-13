@@ -78,6 +78,7 @@ def calculate_budget():
         'remaining': round(remaining, 2)
     }
 
+# Updated app.py (dashboard route)
 from datetime import datetime
 
 @app.route('/dashboard')
@@ -88,15 +89,12 @@ def dashboard():
     dept = session['department']
     budget = get_department_budget(dept)
 
-    # Load all logs
     income_log = load_json('income_log.json')
     expense_log = load_json('expense_log.json')
 
-    # Get current year and month
     current_year = datetime.now().year
     current_month = datetime.now().month
 
-    # Filter by department and current month
     dept_income = [
         i for i in income_log
         if i['department'] == dept and
@@ -113,7 +111,6 @@ def dashboard():
 
     total_income = sum(i['amount'] for i in dept_income)
     total_expense = sum(e['amount'] for e in dept_expense)
-    balance = total_income - total_expense
     remaining_budget = budget - total_expense
 
     return render_template(
@@ -127,7 +124,8 @@ def dashboard():
             'limit': budget,
             'remaining': remaining_budget
         },
-        chart_labels=[f"{datetime.now().strftime('%B')}"],
+        now=datetime.now(),
+        chart_labels=[datetime.now().strftime('%B')],
         chart_income=[total_income],
         chart_expense=[total_expense]
     )
