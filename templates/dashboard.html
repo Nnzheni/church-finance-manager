@@ -3,7 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <title>Dashboard - AFM-RCA Finance Manager</title>
-  
+  <form method="get" class="row g-3 mb-4">
+  <div class="col-md-3">
+    <label for="month">Month</label>
+    <select name="month" id="month" class="form-control">
+      {% for m in range(1, 13) %}
+      <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label for="year">Year</label>
+    <select name="year" id="year" class="form-control">
+      {% for y in range(current_year - 2, current_year + 1) %}
+      <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3 d-flex align-items-end">
+    <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+  </div>
+</form>
+
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
 <meta name="theme-color" content="#00466f">
