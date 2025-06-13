@@ -154,6 +154,18 @@ def add_income():
         income_log = load_json('income_log.json')
         income_log.append(entry)
         save_json('income_log.json', income_log)
+        
+        try:
+    sheet = get_google_sheet("AFM Finance Income")
+    sheet.append_row([
+        entry['amount'],
+        entry['note'],
+        entry['date'],
+        entry['department']
+    ])
+except Exception as e:
+    print("Google Sheets error (income):", e)
+
         flash('Income recorded successfully', 'success')
         return redirect(url_for('dashboard'))
     return render_template('add_income.html')
@@ -173,6 +185,19 @@ def add_expense():
         expense_log = load_json('expense_log.json')
         expense_log.append(entry)
         save_json('expense_log.json', expense_log)
+        # ✅ Sync to Google Sheet
+try:
+    sheet = get_google_sheet("AFM Finance Expense")  # Replace with your actual sheet name
+    sheet.append_row([
+        entry['amount'],
+        entry['category'],
+        entry['note'],
+        entry['date'],
+        entry['department']
+    ])
+except Exception as e:
+    print("Google Sheets error (expense):", e)
+
         flash('Expense recorded successfully', 'success')
         return redirect(url_for('dashboard'))
     return render_template('add_expense.html')
