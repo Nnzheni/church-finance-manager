@@ -116,23 +116,21 @@ def dashboard():
     remaining_budget = budget - total_expense
 
     return render_template(
-        'dashboard.html',
-        user=session['user'],
-        role=role,
-        dept=dept,
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=balance,
-        budget={
-            'limit': budget,
-            'income': total_income,
-            'expense': total_expense,
-            'remaining': remaining_budget
-        },
-        selected_month=selected_month,
-        selected_year=selected_year,
-        current_year=now.year
-    )
+    'dashboard.html',
+    user=session['user'],
+    role=session['role'],
+    dept=dept,
+    budget=budget,
+    total_income=total_income,
+    total_expense=total_expense,
+    balance=balance,
+    remaining_budget=remaining_budget,
+    chart_labels=chart_labels,
+    chart_income=chart_income,
+    chart_expense=chart_expense,
+    now=datetime.now()
+)
+
 
 
 @app.route('/add-income', methods=['GET', 'POST'])
