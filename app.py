@@ -142,33 +142,44 @@ def dashboard():
 
 @app.route('/add-income', methods=['GET', 'POST'])
 def add_income():
-    if 'user' not in session or session['role'] != 'Finance Manager':
+    if 'user' not in session:
         return redirect(url_for('login'))
+
     if request.method == 'POST':
+        amount = float(request.form['amount'])
+        note = request.form['note']
+        date = request.form['date']
+        department = session['department']
+
         entry = {
-            'amount': float(request.form['amount']),
-            'note': request.form['note'],
-            'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'department': session['department']
+            'amount': amount,
+            'note': note,
+            'date': date,
+            'department': department
         }
+
+        # Save to local JSON
         income_log = load_json('income_log.json')
         income_log.append(entry)
         save_json('income_log.json', income_log)
-        
-try:
-    sheet = get_google_sheet("AFM Finance Income")
-    sheet.append_row([
-        entry['amount'],
-        entry['note'],
-        entry['date'],
-        entry['department']
-    ])
-except Exception as e:
-    print("Google Sheets error (income):", e)
+
+        # Save to Google Sheet
+        try:
+            sheet = get_google_sheet("AFM Finance Income")  # Replace with your actual sheet name
+            sheet.append_row([
+                entry['amount'],
+                entry['note'],
+                entry['date'],
+                entry['department']
+            ])
+        except Exception as e:
+            print("Google Sheets error (income):", e)
 
         flash('Income recorded successfully', 'success')
         return redirect(url_for('dashboard'))
+
     return render_template('add_income.html')
+
 
 @app.route('/add-expense', methods=['GET', 'POST'])
 def add_expense():
