@@ -29,7 +29,7 @@
 
 <div class="container mt-4">
   <h4 class="mb-4">Welcome, {{ user }}</h4>
-
+  <h5 class="text-muted mb-4">📅 Summary for {{ now.strftime('%B %Y') }}</h5>
   {% if role == 'Finance Manager' %}
   <div class="mb-4">
    <a href="{{ url_for('add_income') }}" class="btn btn-success me-2">➕ Add Income</a>
