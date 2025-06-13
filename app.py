@@ -22,7 +22,12 @@ def load_users():
         with open(USERS_FILE, 'r') as f:
             return json.load(f)
     return {}
-
+def get_google_sheet(sheet_name):
+    scope = ['https://spreadsheets.google.com/feeds',
+             'https://www.googleapis.com/auth/drive']
+    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    client = gspread.authorize(creds)
+    return client.open(sheet_name).sheet1  # Adjust sheet1 if you’re using other sheets
 def load_json(filename):
     if os.path.exists(filename):
         with open(filename, 'r') as f:
