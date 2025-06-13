@@ -176,36 +176,43 @@ def add_income():
     return render_template('add_income.html')
 
 
-@app.route('/add-expense', methods=['GET', 'POST'])
+@app.route('/add_expense', methods=['POST'])
 def add_expense():
-    if 'user' not in session or session['role'] != 'Finance Manager':
+    if 'user' not in session:
         return redirect(url_for('login'))
-    if request.method == 'POST':
-        entry = {
-            'amount': float(request.form['amount']),
-            'category': request.form['category'],
-            'note': request.form['note'],
-            'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'department': session['department']
+
+    try:
+        # Get form data
+        amount = float(request.form['amount'])
+        description = request.form['description']
+        date = request.form['date']
+        dept = session['department']
+
+        # Save to expense log
+        expense = {
+            "amount": amount,
+            "description": description,
+            "date": date,
+            "department": dept
         }
+
         expense_log = load_json('expense_log.json')
-        expense_log.append(entry)
+        expense_log.append(expense)
         save_json('expense_log.json', expense_log)
-        # ✅ Sync to Google Sheet
-try:
-    sheet = get_google_sheet("AFM Finance Expense")  # Replace with your actual sheet name
-    sheet.append_row([
-        entry['amount'],
-        entry['category'],
-        entry['note'],
-        entry['date'],
-        entry['department']
-    ])
-except Exception as e:
-    print("Google Sheets error (expense):", e)
+
+        # (Optional) Save to Google Sheets if you already linked it
+        try:
+            sheet = get_google_sheet("AFM Finance Expense")
+            sheet.append_row([date, dept, description, amount])
+        except Exception as e:
+            print("Google Sheets error:", e)
+
         flash('Expense recorded successfully', 'success')
-        return redirect(url_for('dashboard'))
-    return render_template('add_expense.html')
+
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+
+    return redirect(url_for('dashboard'))
 
 @app.route('/logout')
 def logout():
