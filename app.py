@@ -157,7 +157,7 @@ def add_expense():
 def logout():
     session.clear()
     return redirect(url_for('login'))
-    @app.route('/budgets', methods=['GET', 'POST'])
+@app.route('/budgets', methods=['GET', 'POST'])
 def manage_budgets():
     if 'user' not in session or session['role'] != 'Finance Manager':
         return redirect(url_for('login'))
