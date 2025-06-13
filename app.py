@@ -157,6 +157,25 @@ def add_expense():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+    @app.route('/budgets', methods=['GET', 'POST'])
+def manage_budgets():
+    if 'user' not in session or session['role'] != 'Finance Manager':
+        return redirect(url_for('login'))
+
+    budgets = load_json('budgets.json')
+
+    if request.method == 'POST':
+        for dept in budgets:
+            try:
+                budgets[dept] = float(request.form.get(dept, budgets[dept]))
+            except ValueError:
+                pass  # skip invalid inputs
+        save_json('budgets.json', budgets)
+        flash("Budgets updated successfully", "success")
+        return redirect(url_for('manage_budgets'))
+
+    return render_template('manage_budgets.html', budgets=budgets)
+
 
 @app.route('/report', methods=['GET'])
 def report():
