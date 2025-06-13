@@ -78,7 +78,6 @@ def calculate_budget():
         'remaining': round(remaining, 2)
     }
 
-# Updated app.py (dashboard route)
 from datetime import datetime
 
 @app.route('/dashboard')
@@ -87,48 +86,54 @@ def dashboard():
         return redirect(url_for('login'))
 
     dept = session['department']
-    budget = get_department_budget(dept)
+    role = session['role']
 
+    # Get selected month/year from query or default to current
+    now = datetime.now()
+    selected_month = int(request.args.get('month', now.month))
+    selected_year = int(request.args.get('year', now.year))
+
+    # Load logs
     income_log = load_json('income_log.json')
     expense_log = load_json('expense_log.json')
 
-    current_year = datetime.now().year
-    current_month = datetime.now().month
-
+    # Filter by department and selected month/year
     dept_income = [
-        i for i in income_log
-        if i['department'] == dept and
-           datetime.strptime(i['date'], '%Y-%m-%d').year == current_year and
-           datetime.strptime(i['date'], '%Y-%m-%d').month == current_month
+        i for i in income_log 
+        if i['department'] == dept and datetime.strptime(i['date'], "%Y-%m-%d").month == selected_month and datetime.strptime(i['date'], "%Y-%m-%d").year == selected_year
     ]
-
     dept_expense = [
-        e for e in expense_log
-        if e['department'] == dept and
-           datetime.strptime(e['date'], '%Y-%m-%d').year == current_year and
-           datetime.strptime(e['date'], '%Y-%m-%d').month == current_month
+        e for e in expense_log 
+        if e['department'] == dept and datetime.strptime(e['date'], "%Y-%m-%d").month == selected_month and datetime.strptime(e['date'], "%Y-%m-%d").year == selected_year
     ]
 
+    # Totals
     total_income = sum(i['amount'] for i in dept_income)
     total_expense = sum(e['amount'] for e in dept_expense)
+    balance = total_income - total_expense
+
+    budget = get_department_budget(dept)
     remaining_budget = budget - total_expense
 
     return render_template(
         'dashboard.html',
         user=session['user'],
-        role=session['role'],
+        role=role,
         dept=dept,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance,
         budget={
+            'limit': budget,
             'income': total_income,
             'expense': total_expense,
-            'limit': budget,
             'remaining': remaining_budget
         },
-        now=datetime.now(),
-        chart_labels=[datetime.now().strftime('%B')],
-        chart_income=[total_income],
-        chart_expense=[total_expense]
+        selected_month=selected_month,
+        selected_year=selected_year,
+        current_year=now.year
     )
+
 
 @app.route('/add-income', methods=['GET', 'POST'])
 def add_income():
