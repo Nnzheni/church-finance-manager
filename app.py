@@ -4,12 +4,7 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-def get_gsheet(sheet_name):
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-    client = gspread.authorize(creds)
-    return client.open(sheet_name).sheet1  # Open the first worksheet
-
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -17,17 +12,19 @@ app.secret_key = 'your_secret_key_here'
 USERS_FILE = 'users.json'
 BUDGETS_FILE = 'budgets.json'
 
-def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
 def get_google_sheet(sheet_name):
     scope = ['https://spreadsheets.google.com/feeds',
              'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
     client = gspread.authorize(creds)
-    return client.open(sheet_name).sheet1  # Adjust sheet1 if you’re using other sheets
+    return client.open(sheet_name).sheet1
+
+def load_users():
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
 def load_json(filename):
     if os.path.exists(filename):
         with open(filename, 'r') as f:
@@ -37,14 +34,13 @@ def load_json(filename):
 def save_json(filename, data):
     with open(filename, 'w') as f:
         json.dump(data, f, indent=2)
-        BUDGETS_FILE = 'budgets.json'
 
 def load_budgets():
     return load_json(BUDGETS_FILE)
 
 def get_department_budget(dept_name):
     budgets = load_budgets()
-    return budgets.get(dept_name, 0)  # Default to 0 if not found
+    return budgets.get(dept_name, 0)
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -59,26 +55,6 @@ def login():
             return redirect(url_for('dashboard'))
         flash("Invalid login credentials", "danger")
     return render_template('login.html')
-def calculate_budget():
-    income_data = load_json('income_log.json')
-    expense_data = load_json('expense_log.json')
-
-    current_month = datetime.datetime.now().strftime('%Y-%m')
-
-    total_income = sum(i['amount'] for i in income_data if i['date'].startswith(current_month))
-    total_expense = sum(e['amount'] for e in expense_data if e['date'].startswith(current_month))
-
-    budget_limit = total_income  # You can adjust this to a fixed amount if needed
-    remaining = budget_limit - total_expense
-
-    return {
-        'income': round(total_income, 2),
-        'expense': round(total_expense, 2),
-        'limit': round(budget_limit, 2),
-        'remaining': round(remaining, 2)
-    }
-
-from datetime import datetime
 
 @app.route('/dashboard')
 def dashboard():
@@ -88,16 +64,13 @@ def dashboard():
     dept = session['department']
     role = session['role']
 
-    # Get selected month/year from query or default to current
     now = datetime.now()
     selected_month = int(request.args.get('month', now.month))
     selected_year = int(request.args.get('year', now.year))
 
-    # Load logs
     income_log = load_json('income_log.json')
     expense_log = load_json('expense_log.json')
 
-    # Filter by department and selected month/year
     dept_income = [
         i for i in income_log 
         if i['department'] == dept and datetime.strptime(i['date'], "%Y-%m-%d").month == selected_month and datetime.strptime(i['date'], "%Y-%m-%d").year == selected_year
@@ -107,237 +80,42 @@ def dashboard():
         if e['department'] == dept and datetime.strptime(e['date'], "%Y-%m-%d").month == selected_month and datetime.strptime(e['date'], "%Y-%m-%d").year == selected_year
     ]
 
-    # Totals
     total_income = sum(i['amount'] for i in dept_income)
     total_expense = sum(e['amount'] for e in dept_expense)
     balance = total_income - total_expense
-
     budget = get_department_budget(dept)
     remaining_budget = budget - total_expense
 
+    # Chart data
+    chart_labels = [f"{selected_year}-{str(m).zfill(2)}" for m in range(1, 13)]
+    chart_income = []
+    chart_expense = []
+
+    for m in range(1, 13):
+        income = sum(
+            i['amount'] for i in income_log
+            if i['department'] == dept and datetime.strptime(i['date'], "%Y-%m-%d").month == m and datetime.strptime(i['date'], "%Y-%m-%d").year == selected_year
+        )
+        expense = sum(
+            e['amount'] for e in expense_log
+            if e['department'] == dept and datetime.strptime(e['date'], "%Y-%m-%d").month == m and datetime.strptime(e['date'], "%Y-%m-%d").year == selected_year
+        )
+        chart_income.append(income)
+        chart_expense.append(expense)
+
     return render_template(
-    'dashboard.html',
-    user=session['user'],
-    role=session['role'],
-    dept=dept,
-    budget=budget,
-    total_income=total_income,
-    total_expense=total_expense,
-    balance=balance,
-    remaining_budget=remaining_budget,
-    chart_labels=chart_labels,
-    chart_income=chart_income,
-    chart_expense=chart_expense,
-    now=datetime.now()
-)
+        'dashboard.html',
+        user=session['user'],
+        role=session['role'],
+        dept=dept,
+        budget=budget,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance,
+        remaining_budget=remaining_budget,
+        chart_labels=chart_labels,
+        chart_income=chart_income,
+        chart_expense=chart_expense,
+        now=datetime.now()
+    )
 
-
-
-@app.route('/add-income', methods=['GET', 'POST'])
-def add_income():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-
-    if request.method == 'POST':
-        amount = float(request.form['amount'])
-        note = request.form['note']
-        date = request.form['date']
-        department = session['department']
-
-        entry = {
-            'amount': amount,
-            'note': note,
-            'date': date,
-            'department': department
-        }
-
-        # Save to local JSON
-        income_log = load_json('income_log.json')
-        income_log.append(entry)
-        save_json('income_log.json', income_log)
-
-        # Save to Google Sheet
-        try:
-            sheet = get_google_sheet("AFM Finance Income")  # Replace with your actual sheet name
-            sheet.append_row([
-                entry['amount'],
-                entry['note'],
-                entry['date'],
-                entry['department']
-            ])
-        except Exception as e:
-            print("Google Sheets error (income):", e)
-
-        flash('Income recorded successfully', 'success')
-        return redirect(url_for('dashboard'))
-
-    return render_template('add_income.html')
-
-
-@app.route('/add_expense', methods=['POST'])
-def add_expense():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-
-    try:
-        # Get form data
-        amount = float(request.form['amount'])
-        description = request.form['description']
-        date = request.form['date']
-        dept = session['department']
-
-        # Save to expense log
-        expense = {
-            "amount": amount,
-            "description": description,
-            "date": date,
-            "department": dept
-        }
-
-        expense_log = load_json('expense_log.json')
-        expense_log.append(expense)
-        save_json('expense_log.json', expense_log)
-
-        # (Optional) Save to Google Sheets if you already linked it
-        try:
-            sheet = get_google_sheet("AFM Finance Expense")
-            sheet.append_row([date, dept, description, amount])
-        except Exception as e:
-            print("Google Sheets error:", e)
-
-        flash('Expense recorded successfully', 'success')
-
-    except Exception as e:
-        flash(f'Error: {str(e)}', 'danger')
-
-    return redirect(url_for('dashboard'))
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-@app.route('/budgets', methods=['GET', 'POST'])
-def manage_budgets():
-    if 'user' not in session or session['role'] != 'Finance Manager':
-        return redirect(url_for('login'))
-
-    budgets = load_json('budgets.json')
-
-    if request.method == 'POST':
-        for dept in budgets:
-            try:
-                budgets[dept] = float(request.form.get(dept, budgets[dept]))
-            except ValueError:
-                pass  # skip invalid inputs
-        save_json('budgets.json', budgets)
-        flash("Budgets updated successfully", "success")
-        return redirect(url_for('manage_budgets'))
-
-    return render_template('manage_budgets.html', budgets=budgets)
-
-
-@app.route('/report', methods=['GET'])
-def report():
-    income_log = load_json('income_log.json')
-    expense_log = load_json('expense_log.json')
-
-    for i in income_log:
-        i['type'] = 'Income'
-        i['description'] = i.get('note', '')
-    for e in expense_log:
-        e['type'] = 'Expense'
-        e['description'] = e.get('category', '')
-
-    combined = income_log + expense_log
-
-    department_filter = request.args.get('department', '')
-    from_date = request.args.get('from_date', '')
-    to_date = request.args.get('to_date', '')
-
-    filtered = []
-    for entry in combined:
-        if department_filter and department_filter.lower() not in entry['department'].lower():
-            continue
-        if from_date and entry['date'] < from_date:
-            continue
-        if to_date and entry['date'] > to_date:
-            continue
-        filtered.append(entry)
-
-    filtered.sort(key=lambda x: x['date'], reverse=True)
-
-    return render_template("report.html", data=filtered,
-                           department_filter=department_filter,
-                           from_date=from_date, to_date=to_date)
-
-@app.route('/export-excel')
-def export_excel():
-    department = request.args.get('department', '')
-    from_date = request.args.get('from_date', '')
-    to_date = request.args.get('to_date', '')
-
-    income = load_json('income_log.json')
-    expenses = load_json('expense_log.json')
-
-    for i in income:
-        i['type'] = 'Income'
-        i['description'] = i.get('note', '')
-    for e in expenses:
-        e['type'] = 'Expense'
-        e['description'] = e.get('category', '')
-
-    combined = income + expenses
-    filtered = []
-
-    for entry in combined:
-        if department and department.lower() not in entry['department'].lower():
-            continue
-        if from_date and entry['date'] < from_date:
-            continue
-        if to_date and entry['date'] > to_date:
-            continue
-        filtered.append(entry)
-
-    df = pd.DataFrame(filtered)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Finance Report')
-
-    output.seek(0)
-    return send_file(output, download_name="finance_report.xlsx", as_attachment=True)
-
-@app.route('/export-pdf')
-def export_pdf():
-    from datetime import datetime
-
-    department = request.args.get('department', '')
-    from_date = request.args.get('from_date', '')
-    to_date = request.args.get('to_date', '')
-
-    income = load_json('income_log.json')
-    expenses = load_json('expense_log.json')
-
-    for i in income:
-        i['type'] = 'Income'
-        i['description'] = i.get('note', '')
-    for e in expenses:
-        e['type'] = 'Expense'
-        e['description'] = e.get('category', '')
-
-    combined = income + expenses
-    filtered = []
-
-    for entry in combined:
-        if department and department.lower() not in entry['department'].lower():
-            continue
-        if from_date and entry['date'] < from_date:
-            continue
-        if to_date and entry['date'] > to_date:
-            continue
-        filtered.append(entry)
-
-    filtered.sort(key=lambda x: x['date'], reverse=True)
-    return render_template("report_pdf.html", data=filtered, now=datetime.now)
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
