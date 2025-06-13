@@ -64,56 +64,66 @@ def calculate_budget():
         'remaining': round(remaining, 2)
     }
 
+from collections import defaultdict
+
 @app.route('/dashboard')
 def dashboard():
     if 'user' not in session:
         return redirect(url_for('login'))
 
     dept = session['department']
-    budget_limit = get_department_budget(dept)
+    month = request.args.get('month', datetime.datetime.now().month, type=int)
+    year = request.args.get('year', datetime.datetime.now().year, type=int)
+    budget = get_department_budget(dept)
 
-    # Filter values from URL
-    month = int(request.args.get('month', datetime.datetime.now().month))
-    year = int(request.args.get('year', datetime.datetime.now().year))
-
-    # Load logs
     income_log = load_json('income_log.json')
     expense_log = load_json('expense_log.json')
 
-    # Filter by department and selected month/year
-    dept_income = [
-        i for i in income_log
-        if i['department'] == dept and datetime.datetime.strptime(i['date'], '%Y-%m-%d %H:%M:%S').month == month and datetime.datetime.strptime(i['date'], '%Y-%m-%d %H:%M:%S').year == year
-    ]
-    dept_expense = [
-        e for e in expense_log
-        if e['department'] == dept and datetime.datetime.strptime(e['date'], '%Y-%m-%d %H:%M:%S').month == month and datetime.datetime.strptime(e['date'], '%Y-%m-%d %H:%M:%S').year == year
-    ]
+    dept_income = [i for i in income_log if i['department'] == dept]
+    dept_expense = [e for e in expense_log if e['department'] == dept]
 
-    # Totals
-    income_total = sum(i['amount'] for i in dept_income)
-    expense_total = sum(e['amount'] for e in dept_expense)
-    remaining = budget_limit - expense_total
+    # Filter by selected month/year
+    filtered_income = [i for i in dept_income if datetime.datetime.strptime(i['date'], '%Y-%m-%d %H:%M:%S').month == month and datetime.datetime.strptime(i['date'], '%Y-%m-%d %H:%M:%S').year == year]
+    filtered_expense = [e for e in dept_expense if datetime.datetime.strptime(e['date'], '%Y-%m-%d %H:%M:%S').month == month and datetime.datetime.strptime(e['date'], '%Y-%m-%d %H:%M:%S').year == year]
 
-    # Budget object for template
-    class Budget:
-        def __init__(self, income, expense, limit):
-            self.income = income
-            self.expense = expense
-            self.limit = limit
-            self.remaining = limit - expense
+    total_income = sum(i['amount'] for i in filtered_income)
+    total_expense = sum(e['amount'] for e in filtered_expense)
+    balance = total_income - total_expense
+    remaining_budget = budget - total_expense
 
-    budget = Budget(income_total, expense_total, budget_limit)
+    # Group monthly totals
+    monthly_totals = defaultdict(lambda: {"income": 0, "expense": 0})
+    for i in dept_income:
+        d = datetime.datetime.strptime(i['date'], '%Y-%m-%d %H:%M:%S')
+        key = f"{d.year}-{d.month:02d}"
+        monthly_totals[key]['income'] += i['amount']
+    for e in dept_expense:
+        d = datetime.datetime.strptime(e['date'], '%Y-%m-%d %H:%M:%S')
+        key = f"{d.year}-{d.month:02d}"
+        monthly_totals[key]['expense'] += e['amount']
+
+    chart_labels = sorted(monthly_totals.keys())
+    chart_income = [monthly_totals[m]['income'] for m in chart_labels]
+    chart_expense = [monthly_totals[m]['expense'] for m in chart_labels]
 
     return render_template(
         'dashboard.html',
         user=session['user'],
         role=session['role'],
         dept=dept,
-        budget=budget,
-        selected_month=month,
-        selected_year=year
+        month=month,
+        year=year,
+        budget={
+            "limit": budget,
+            "income": total_income,
+            "expense": total_expense,
+            "remaining": remaining_budget
+        },
+        chart_labels=chart_labels,
+        chart_income=chart_income,
+        chart_expense=chart_expense
     )
+
 
 
 @app.route('/add-income', methods=['GET', 'POST'])
