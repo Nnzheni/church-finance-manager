@@ -265,6 +265,10 @@ def report():
         filtered.append(entry)
 
     filtered.sort(key=lambda x: x['date'], reverse=True)
+# Prepare data for chart
+chart_labels = [f"{selected_year}-{selected_month:02d}"]
+chart_income = [total_income]
+chart_expense = [total_expense]
 
     return render_template("report.html", data=filtered,
                            department_filter=department_filter,
