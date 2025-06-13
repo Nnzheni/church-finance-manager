@@ -11,13 +11,24 @@
   <form method="POST">
     <div class="mb-3">
       <label for="amount" class="form-label">Amount (R)</label>
-      <input type="number" step="0.01" class="form-control" name="amount" required>
+      <input type="number" step="100" class="form-control" name="amount" required>
     </div>
     <div class="mb-3">
       <label for="note" class="form-label">Note</label>
       <input type="text" class="form-control" name="note" required>
     </div>
     <button type="submit" class="btn btn-success">Save Income</button>
+            try:
+            sheet = get_google_sheet("AFM Finance Income")  # Replace with your actual sheet name
+            sheet.append_row([
+                entry['amount'],
+                entry['note'],
+                entry['date'],
+                entry['department']
+            ])
+        except Exception as e:
+            print("Google Sheets error (income):", e)
+
     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
   </form>
 </div>
