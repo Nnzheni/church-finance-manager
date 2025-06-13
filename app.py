@@ -155,7 +155,7 @@ def add_income():
         income_log.append(entry)
         save_json('income_log.json', income_log)
         
-        try:
+try:
     sheet = get_google_sheet("AFM Finance Income")
     sheet.append_row([
         entry['amount'],
