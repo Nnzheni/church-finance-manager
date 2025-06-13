@@ -2,3 +2,5 @@ Flask==2.3.3
 pandas
 xlsxwriter
 Flask-Mail==0.9.1
+gspread
+oauth2client
