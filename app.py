@@ -1,6 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 import json, os, datetime, io
 import pandas as pd
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+def get_gsheet(sheet_name):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    client = gspread.authorize(creds)
+    return client.open(sheet_name).sheet1  # Open the first worksheet
+
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
