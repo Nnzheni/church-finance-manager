@@ -1,150 +1,119 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 import json, os, datetime, io
 import pandas as pd
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
-from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
-USERS_FILE = 'users.json'
-BUDGETS_FILE = 'budgets.json'
+USERS_FILE    = 'users.json'
+BUDGETS_FILE  = 'budgets.json'
+INCOME_LOG    = 'income_log.json'
+EXPENSE_LOG   = 'expense_log.json'
 
-def get_google_sheet(sheet_name):
-    scope = ['https://spreadsheets.google.com/feeds',
-             'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-    client = gspread.authorize(creds)
-    return client.open(sheet_name).sheet1
-
-def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def load_json(filename):
-    if os.path.exists(filename):
-        with open(filename, 'r') as f:
-            return json.load(f)
+def load_json(f):
+    if os.path.exists(f):
+        return json.load(open(f))
     return []
 
-def save_json(filename, data):
-    with open(filename, 'w') as f:
-        json.dump(data, f, indent=2)
+def save_json(f, data):
+    json.dump(data, open(f, 'w'), indent=2)
 
-def load_budgets():
-    return load_json(BUDGETS_FILE)
-
-def get_department_budget(dept_name):
-    budgets = load_budgets()
-    return budgets.get(dept_name, 0)
+def load_users():    return load_json(USERS_FILE)
+def load_budgets():  return load_json(BUDGETS_FILE)
 
 @app.route('/', methods=['GET','POST'])
-@app.route('/login', methods=['GET','POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    if request.method=='POST':
+        u,p = request.form['username'], request.form['password']
         users = load_users()
-        if username in users and users[username]['password'] == password:
-            session['user'] = username
-            session['role'] = users[username]['role']
-            session['department'] = users[username]['department']
+        if u in users and users[u]['password']==p:
+            session.update(user=u, role=users[u]['role'], dept=users[u]['department'])
             return redirect(url_for('dashboard'))
-        flash("Invalid login credentials", "danger")
+        flash('Invalid credentials','danger')
     return render_template('login.html')
-    
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
 
 @app.route('/dashboard')
 def dashboard():
-    if 'user' not in session:
-        return redirect(url_for('login'))
+    if 'user' not in session: return redirect(url_for('login'))
+    month = int(request.args.get('month', datetime.datetime.now().month))
+    year  = int(request.args.get('year',  datetime.datetime.now().year))
+    dept  = session['dept']
 
-    dept = session['department']
-    role = session['role']
+    inc = [e for e in load_json(INCOME_LOG)
+           if e['department']==dept and
+              datetime.datetime.fromisoformat(e['date']).month==month and
+              datetime.datetime.fromisoformat(e['date']).year==year]
+    exp = [e for e in load_json(EXPENSE_LOG)
+           if e['department']==dept and
+              datetime.datetime.fromisoformat(e['date']).month==month and
+              datetime.datetime.fromisoformat(e['date']).year==year]
 
-    now = datetime.now()
-    selected_month = int(request.args.get('month', now.month))
-    selected_year = int(request.args.get('year', now.year))
-    current_year = now.year
+    total_inc = sum(e['amount'] for e in inc)
+    total_exp = sum(e['amount'] for e in exp)
+    budgets    = load_budgets()
+    limit      = budgets.get(dept, 0)
+    remain     = limit - total_exp
 
-    income_log = load_json('income_log.json')
-    expense_log = load_json('expense_log.json')
+    # Chart data for all 12 months
+    labels = [f"{year}-{m:02d}" for m in range(1,13)]
+    inc_data = [ sum(e['amount'] for e in load_json(INCOME_LOG)
+                     if e['department']==dept and
+                        datetime.datetime.fromisoformat(e['date']).strftime('%Y-%m')==lbl)
+                 for lbl in labels ]
+    exp_data = [ sum(e['amount'] for e in load_json(EXPENSE_LOG)
+                     if e['department']==dept and
+                        datetime.datetime.fromisoformat(e['date']).strftime('%Y-%m')==lbl)
+                 for lbl in labels ]
 
-    # Filter this dept & month
-    dept_income = [
-        i for i in income_log
-        if i['department'] == dept
-           and datetime.strptime(i['date'], "%Y-%m-%d").month == selected_month
-           and datetime.strptime(i['date'], "%Y-%m-%d").year == selected_year
-    ]
-    dept_expense = [
-        e for e in expense_log
-        if e['department'] == dept
-           and datetime.strptime(e['date'], "%Y-%m-%d").month == selected_month
-           and datetime.strptime(e['date'], "%Y-%m-%d").year == selected_year
-    ]
-
-    total_income = sum(i['amount'] for i in dept_income)
-    total_expense = sum(e['amount'] for e in dept_expense)
-    remaining_budget = get_department_budget(dept) - total_expense
-
-    # Chart data across all 12 months
-    chart_labels  = [f"{selected_year}-{m:02d}" for m in range(1,13)]
-    chart_income  = [
-        sum(
-            i['amount']
-            for i in income_log
-            if i['department']==dept
-               and datetime.strptime(i['date'], "%Y-%m-%d").strftime('%Y-%m')==label
-        )
-        for label in chart_labels
-    ]
-    chart_expense = [
-        sum(
-            e['amount']
-            for e in expense_log
-            if e['department']==dept
-               and datetime.strptime(e['date'], "%Y-%m-%d").strftime('%Y-%m')==label
-        )
-        for label in chart_labels
-    ]
-
-    return render_template(
-        'dashboard.html',
-        user=session['user'],
-        role=role,
-        dept=dept,
-        budget={
-            'income': total_income,
-            'expense': total_expense,
-            'limit': get_department_budget(dept),
-            'remaining': remaining_budget
-        },
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=(total_income - total_expense),
-        remaining_budget=remaining_budget,
-        chart_labels=chart_labels,
-        chart_income=chart_income,
-        chart_expense=chart_expense,
-        now=now,
-        selected_month=selected_month,
-        selected_year=selected_year,
-        current_year=current_year
+    return render_template('dashboard.html',
+        user=session['user'], role=session['role'], dept=dept,
+        month=month, year=year,
+        total_inc=total_inc, total_exp=total_exp,
+        limit=limit, remain=remain,
+        chart_labels=labels, chart_inc=inc_data, chart_exp=exp_data
     )
 
+@app.route('/add-income', methods=['GET','POST'])
+def add_income():
+    if 'user' not in session: return redirect(url_for('login'))
+    if request.method=='POST':
+        entry = {
+          'amount': float(request.form['amount']),
+          'note':   request.form['note'],
+          'date':   request.form['date'],
+          'department': session['dept']
+        }
+        L=load_json(INCOME_LOG); L.append(entry); save_json(INCOME_LOG,L)
+        flash('Income saved','success')
+        return redirect(url_for('dashboard'))
+    return render_template('add_income.html')
 
-if __name__ == '__main__':
-    # Listen on the PORT provided by the environment (for Render.com etc.), default to 10000
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+@app.route('/add-expense', methods=['GET','POST'])
+def add_expense():
+    if 'user' not in session: return redirect(url_for('login'))
+    if request.method=='POST':
+        entry = {
+          'amount': float(request.form['amount']),
+          'note':   request.form['note'],
+          'date':   request.form['date'],
+          'department': session['dept']
+        }
+        L=load_json(EXPENSE_LOG); L.append(entry); save_json(EXPENSE_LOG,L)
+        flash('Expense saved','success')
+        return redirect(url_for('dashboard'))
+    return render_template('add_expense.html')
 
+@app.route('/report')
+def report():
+    data = load_json(INCOME_LOG) + load_json(EXPENSE_LOG)
+    return render_template('report.html', data=data,
+      dept=request.args.get('department',''),
+      frm=request.args.get('from_date',''),
+      to=request.args.get('to_date',''))
 
+@app.route('/logout')
+def logout():
+    session.clear(); return redirect(url_for('login'))
 
+if __name__=='__main__':
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT',10000)))
