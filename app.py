@@ -42,7 +42,8 @@ def get_department_budget(dept_name):
     budgets = load_budgets()
     return budgets.get(dept_name, 0)
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET','POST'])
+@app.route('/login', methods=['GET','POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
