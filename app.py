@@ -103,13 +103,48 @@ def add_expense():
         return redirect(url_for('dashboard'))
     return render_template('add_expense.html')
 
-@app.route('/report')
+@app.route('/report', methods=['GET'])
 def report():
-    data = load_json(INCOME_LOG) + load_json(EXPENSE_LOG)
-    return render_template('report.html', data=data,
-      dept=request.args.get('department',''),
-      frm=request.args.get('from_date',''),
-      to=request.args.get('to_date',''))
+    # Load and tag entries
+    income = load_json(INCOME_LOG)
+    for i in income:
+        i['type'] = 'Income'
+        i['description'] = i.get('note', '')
+
+    expense = load_json(EXPENSE_LOG)
+    for e in expense:
+        e['type'] = 'Expense'
+        e['description'] = e.get('note', '')
+
+    combined = income + expense
+
+    # Get filters from query string
+    department_filter = request.args.get('department', '')
+    from_date = request.args.get('from_date', '')
+    to_date   = request.args.get('to_date', '')
+
+    # Apply filters
+    filtered = []
+    for entry in combined:
+        if department_filter and department_filter.lower() not in entry['department'].lower():
+            continue
+        if from_date and entry['date'] < from_date:
+            continue
+        if to_date and entry['date'] > to_date:
+            continue
+        filtered.append(entry)
+
+    # Sort newest first
+    filtered.sort(key=lambda x: x['date'], reverse=True)
+
+    return render_template(
+        'report.html',
+        data=filtered,
+        department_filter=department_filter,
+        from_date=from_date,
+        to_date=to_date
+    )
+
 
 @app.route('/logout')
 def logout():
