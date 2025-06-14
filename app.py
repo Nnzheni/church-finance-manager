@@ -149,6 +149,15 @@ def report():
 @app.route('/logout')
 def logout():
     session.clear(); return redirect(url_for('login'))
+@app.route('/test-sheet')
+def test_sheet():
+    try:
+        # Replace "AFM Finance Income" with your exact sheet name
+        sheet = get_google_sheet("AFM Finance Income")
+        # We'll just return its title as proof it connected
+        return f"✅ Google Sheet OK: {sheet.title}"
+    except Exception as e:
+        return f"❌ Google Sheets error: {e}"
 
 if __name__=='__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT',10000)))
