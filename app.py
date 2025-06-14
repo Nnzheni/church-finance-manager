@@ -61,63 +61,101 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+from flask import Flask, render_template, request, redirect, url_for, session
+import json, os
+from datetime import datetime
+
+app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'
+
+USERS_FILE    = 'users.json'
+BUDGETS_FILE  = 'budgets.json'
+INCOME_LOG    = 'income_log.json'
+EXPENSE_LOG   = 'expense_log.json'
+
+def load_json(fn):
+    if os.path.exists(fn):
+        with open(fn,'r') as f:
+            return json.load(f)
+    return []
+
+def get_department_budget(dept):
+    budgets = load_json(BUDGETS_FILE)
+    return budgets.get(dept, 0)
+
 @app.route('/dashboard')
 def dashboard():
+    # 1) auth check
     if 'user' not in session:
         return redirect(url_for('login'))
 
     dept = session['department']
     role = session['role']
 
-    # pick month/year filters
+    # 2) date & filters
     now            = datetime.now()
     selected_month = int(request.args.get('month', now.month))
-    selected_year  = int(request.args.get('year' , now.year))
+    selected_year  = int(request.args.get('year',  now.year))
     current_year   = now.year
 
-    # load logs
-    incomes  = load_json(INCOME_LOG)
-    expenses = load_json(EXPENSE_LOG)
+    # 3) load logs
+    income_log  = load_json(INCOME_LOG)
+    expense_log = load_json(EXPENSE_LOG)
 
-    # filter for this dept & month/year
-    def in_period(r):
-        d = datetime.strptime(r['date'], "%Y-%m-%d")
-        return d.month==selected_month and d.year==selected_year
+    # 4) filter to this dept + month/year
+    def in_period(entry):
+        d = datetime.strptime(entry['date'], '%Y-%m-%d')
+        return entry['department']==dept and d.month==selected_month and d.year==selected_year
 
-    dept_inc  = [i for i in incomes  if i['department']==dept and in_period(i)]
-    dept_exp  = [e for e in expenses if e['department']==dept and in_period(e)]
+    dept_income  = [i for i in income_log  if in_period(i)]
+    dept_expense = [e for e in expense_log if in_period(e)]
 
-    total_inc     = sum(i['amount'] for i in dept_inc)
-    total_exp     = sum(e['amount'] for e in dept_exp)
-    remaining_bdgt = get_department_budget(dept) - total_exp
+    # 5) totals & budget math
+    total_income    = sum(i['amount'] for i in dept_income)
+    total_expense   = sum(e['amount'] for e in dept_expense)
+    budget_limit    = get_department_budget(dept)
+    remaining_budget= budget_limit - total_expense
 
-    # build chart over all 12 months
+    # 6) build 12-month chart arrays
     chart_labels  = [f"{selected_year}-{m:02d}" for m in range(1,13)]
     chart_income  = [
-        sum(i['amount'] for i in incomes if i['department']==dept and i['date'].startswith(lbl))
-        for lbl in chart_labels
+        sum(i['amount'] for i in income_log
+            if i['department']==dept
+            and datetime.strptime(i['date'],'%Y-%m-%d').strftime('%Y-%m')==label
+        )
+        for label in chart_labels
     ]
     chart_expense = [
-        sum(e['amount'] for e in expenses if e['department']==dept and e['date'].startswith(lbl))
-        for lbl in chart_labels
+        sum(e['amount'] for e in expense_log
+            if e['department']==dept
+            and datetime.strptime(e['date'],'%Y-%m-%d').strftime('%Y-%m')==label
+        )
+        for label in chart_labels
     ]
 
-    return render_template('dashboard.html',
-        user=session['user'], role=role, dept=dept,
-        budget={ 'income': total_inc,
-                 'expense': total_exp,
-                 'limit':  get_department_budget(dept),
-                 'remaining': remaining_bdgt },
-        total_income=total_inc, total_expense=total_exp,
-        balance=total_inc-total_exp,
-        chart_labels=chart_labels,
-        chart_income=chart_income,
-        chart_expense=chart_expense,
-        now=now,
+    return render_template(
+        'dashboard.html',
+        user=session['user'],
+        role=role,
+        dept=dept,
+
+        # summary
+        total_income=total_income,
+        total_expense=total_expense,
+        budget_limit=budget_limit,
+        remaining_budget=remaining_budget,
+
+        # filters
         selected_month=selected_month,
         selected_year=selected_year,
-        current_year=current_year
+        current_year=current_year,
+
+        # chart data
+        chart_labels=chart_labels,
+        chart_income=chart_income,
+        chart_expense=chart_expense
     )
+
 
 @app.route('/add-income', methods=['GET','POST'])
 def add_income():
