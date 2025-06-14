@@ -10,6 +10,15 @@
     <h2 class="mb-4">💰 Department Budget Management</h2>
 
     <form method="POST">
+      <!-- Place this just below <form method="POST"> -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+      <div class="alert alert-{{ category }}">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
       <div class="table-responsive">
         <table class="table table-bordered table-striped">
           <thead class="table-primary">
