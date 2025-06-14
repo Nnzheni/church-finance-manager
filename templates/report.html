@@ -1,73 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Finance Report</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <meta charset="UTF-8">
+  <title>Finance Report – AFM-RCA</title>
+
+  <!-- Bootstrap CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+  >
+
+  <!-- (Optional) PWA support -->
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+  <meta name="theme-color" content="#00466f">
 </head>
-<body class="p-4">
-  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mb-3">
-  ⬅ Back to Dashboard
-</a>
+<body class="p-4 bg-light">
+  <div class="container">
 
-  <h2 class="mb-4">📋 Finance Report</h2>
+    <!-- Back link -->
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mb-3">
+      ⬅ Back to Dashboard
+    </a>
 
-  <!-- Filter Form -->
-  <form method="get" class="row g-3 mb-4">
-    <div class="col-md-3">
-      <label>Department</label>
-     <select name="department" class="form-control">
-  <option value="">-- All Departments --</option>
-  <option value="Main" {% if department_filter == 'Main' %}selected{% endif %}>Main</option>
-  <option value="Men's Fellowship" {% if department_filter == "Men's Fellowship" %}selected{% endif %}>Men's Fellowship</option>
-  <option value="Youth" {% if department_filter == 'Youth' %}selected{% endif %}>Youth</option>
-  <option value="Local Sisters Fellowship" {% if department_filter == 'Local Sisters Fellowship' %}selected{% endif %}>Local Sisters Fellowship</option>
-</select>
+    <!-- Title -->
+    <h2 class="mb-4">📋 Finance Report</h2>
 
-    </div>
-    <div class="col-md-3">
-      <label>From</label>
-      <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
-    </div>
-    <div class="col-md-3">
-      <label>To</label>
-      <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
-    </div>
-    <div class="col-md-3 d-flex align-items-end">
-      <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
-    </div>
-  </form>
-<!-- Export Buttons -->
-<div class="mb-3">
-  <a href="{{ url_for('export_excel', department=department_filter, from_date=from_date, to_date=to_date) }}" class="btn btn-success me-2">Export to Excel</a>
-  <a href="{{ url_for('export_pdf', department=department_filter, from_date=from_date, to_date=to_date) }}" class="btn btn-danger">Export to PDF</a>
-</div>
+    <!-- Filter Form -->
+    <form method="get" class="row g-3 mb-4">
+      <div class="col-md-3">
+        <label for="department" class="form-label">Department</label>
+        <select id="department" name="department" class="form-select">
+          <option value="">-- All Departments --</option>
+          <option value="Main" {% if department_filter == 'Main' %}selected{% endif %}>Main</option>
+          <option value="Men's Fellowship" {% if department_filter == "Men's Fellowship" %}selected{% endif %}>Men's Fellowship</option>
+          <option value="Youth" {% if department_filter == 'Youth' %}selected{% endif %}>Youth</option>
+          <option value="Local Sisters Fellowship" {% if department_filter == 'Local Sisters Fellowship' %}selected{% endif %}>Local Sisters Fellowship</option>
+        </select>
+      </div>
 
-  <!-- Table -->
-  <table class="table table-bordered table-hover">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Department</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in data %}
-      <tr>
-        <td>{{ row.date }}</td>
-        <td>{{ row.department }}</td>
-        <td>{{ row.type }}</td>
-        <td>{{ row.description }}</td>
-        <td>R{{ "%.2f"|format(row.amount) }}</td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="5" class="text-center">No records found</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      <div class="col-md-3">
+        <label for="from_date" class="form-label">From</label>
+        <input
+          id="from_date"
+          name="from_date"
+          type="date"
+          class="form-control"
+          value="{{ from_date }}"
+        >
+      </div>
+
+      <div class="col-md-3">
+        <label for="to_date" class="form-label">To</label>
+        <input
+          id="to_date"
+          name="to_date"
+          type="date"
+          class="form-control"
+          value="{{ to_date }}"
+        >
+      </div>
+
+      <div class="col-md-3 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100">
+          Apply Filters
+        </button>
+      </div>
+    </form>
+
+    <!-- Export Buttons -->
+    <div class="mb-4">
+      <a
+        href="{{ url_for('export_excel',
+                         department=department_filter,
+                         from_date=from_date,
+                         to_date=to_date) }}"
+        class="btn btn-success me-2"
+      >
+        Export to Excel
+      </a>
+      <a
+        href="{{ url_for('export_pdf',
+                         department=department_filter,
+                         from_date=from_date,
+                         to_date=to_date) }}"
+        class="btn btn-danger"
+      >
+        Export to PDF
+      </a>
+    </div>
+
+    <!-- Data Table -->
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Department</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th class="text-end">Amount (R)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data %}
+            <tr>
+              <td>{{ row.date }}</td>
+              <td>{{ row.department }}</td>
+              <td>{{ row.type }}</td>
+              <td>{{ row.description }}</td>
+              <td class="text-end">R{{ '%.2f'|format(row.amount) }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5" class="text-center">No records found</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </body>
 </html>
