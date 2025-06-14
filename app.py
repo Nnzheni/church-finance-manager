@@ -103,20 +103,24 @@ def dashboard():
         chart_income.append(income)
         chart_expense.append(expense)
 
-    return render_template(
-        'dashboard.html',
-        user=session['user'],
-        role=session['role'],
-        dept=dept,
-        budget=budget,
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=balance,
-        remaining_budget=remaining_budget,
-        chart_labels=chart_labels,
-        chart_income=chart_income,
-        chart_expense=chart_expense,
-        now=datetime.now()
+return render_template(
+    'dashboard.html',
+    user=session['user'],
+    role=session['role'],
+    dept=dept,
+    budget=budget,
+    total_income=total_income,
+    total_expense=total_expense,
+    balance=balance,
+    remaining_budget=remaining_budget,
+    chart_labels=chart_labels,
+    chart_income=chart_income,
+    chart_expense=chart_expense,
+    now=datetime.now(),
+    current_year=selected_year,
+    current_month=selected_month
+)
+
     )
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
