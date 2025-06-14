@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Finance Report PDF</title>
   <style>
     body {
@@ -42,7 +43,7 @@
         <th>Department</th>
         <th>Type</th>
         <th>Description</th>
-        <th>Amount (R)</th>
+        <th class="text-end">Amount (R)</th>
       </tr>
     </thead>
     <tbody>
@@ -52,7 +53,7 @@
         <td>{{ row.department }}</td>
         <td>{{ row.type }}</td>
         <td>{{ row.description }}</td>
-        <td>{{ "%.2f"|format(row.amount) }}</td>
+        <td style="text-align: right;">R{{ '%.2f'|format(row.amount) }}</td>
       </tr>
       {% else %}
       <tr>
@@ -63,8 +64,7 @@
   </table>
 
   <div class="footer">
-    Generated on {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+    Generated on {{ now.strftime('%Y-%m-%d %H:%M:%S') }}
   </div>
 </body>
 </html>
-
