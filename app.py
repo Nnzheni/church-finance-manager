@@ -72,41 +72,59 @@ def dashboard():
     income_log = load_json('income_log.json')
     expense_log = load_json('expense_log.json')
 
+    # Filter this dept & month
     dept_income = [
         i for i in income_log
-        if i['department'] == dept and datetime.strptime(i['date'], "%Y-%m-%d").month == selected_month and datetime.strptime(i['date'], "%Y-%m-%d").year == selected_year
+        if i['department'] == dept
+           and datetime.strptime(i['date'], "%Y-%m-%d").month == selected_month
+           and datetime.strptime(i['date'], "%Y-%m-%d").year == selected_year
     ]
     dept_expense = [
         e for e in expense_log
-        if e['department'] == dept and datetime.strptime(e['date'], "%Y-%m-%d").month == selected_month and datetime.strptime(e['date'], "%Y-%m-%d").year == selected_year
+        if e['department'] == dept
+           and datetime.strptime(e['date'], "%Y-%m-%d").month == selected_month
+           and datetime.strptime(e['date'], "%Y-%m-%d").year == selected_year
     ]
 
     total_income = sum(i['amount'] for i in dept_income)
     total_expense = sum(e['amount'] for e in dept_expense)
-    balance = total_income - total_expense
+    remaining_budget = get_department_budget(dept) - total_expense
 
-    budget = get_department_budget(dept)
-    remaining_budget = budget - total_expense
-
-    # Generate chart data
-    chart_labels = [f"{selected_year}-{str(m).zfill(2)}" for m in range(1, 13)]
-    chart_income = [sum(i['amount'] for i in income_log if i['department'] == dept and datetime.strptime(i['date'], "%Y-%m-%d").strftime('%Y-%m') == label) for label in chart_labels]
-    chart_expense = [sum(e['amount'] for e in expense_log if e['department'] == dept and datetime.strptime(e['date'], "%Y-%m-%d").strftime('%Y-%m') == label) for label in chart_labels]
+    # Chart data across all 12 months
+    chart_labels  = [f"{selected_year}-{m:02d}" for m in range(1,13)]
+    chart_income  = [
+        sum(
+            i['amount']
+            for i in income_log
+            if i['department']==dept
+               and datetime.strptime(i['date'], "%Y-%m-%d").strftime('%Y-%m')==label
+        )
+        for label in chart_labels
+    ]
+    chart_expense = [
+        sum(
+            e['amount']
+            for e in expense_log
+            if e['department']==dept
+               and datetime.strptime(e['date'], "%Y-%m-%d").strftime('%Y-%m')==label
+        )
+        for label in chart_labels
+    ]
 
     return render_template(
         'dashboard.html',
         user=session['user'],
-        role=session['role'],
+        role=role,
         dept=dept,
         budget={
-            "income": total_income,
-            "expense": total_expense,
-            "limit": budget,
-            "remaining": remaining_budget
+            'income': total_income,
+            'expense': total_expense,
+            'limit': get_department_budget(dept),
+            'remaining': remaining_budget
         },
         total_income=total_income,
         total_expense=total_expense,
-        balance=balance,
+        balance=(total_income - total_expense),
         remaining_budget=remaining_budget,
         chart_labels=chart_labels,
         chart_income=chart_income,
@@ -116,7 +134,10 @@ def dashboard():
         selected_year=selected_year,
         current_year=current_year
     )
+
+
 if __name__ == '__main__':
+    # Listen on the PORT provided by the environment (for Render.com etc.), default to 10000
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
 
 
