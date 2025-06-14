@@ -116,7 +116,8 @@ def dashboard():
         selected_year=selected_year,
         current_year=current_year
     )
-
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
 
 
 
