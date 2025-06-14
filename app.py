@@ -67,65 +67,55 @@ def dashboard():
     now = datetime.now()
     selected_month = int(request.args.get('month', now.month))
     selected_year = int(request.args.get('year', now.year))
+    current_year = now.year
 
     income_log = load_json('income_log.json')
     expense_log = load_json('expense_log.json')
 
     dept_income = [
-        i for i in income_log 
+        i for i in income_log
         if i['department'] == dept and datetime.strptime(i['date'], "%Y-%m-%d").month == selected_month and datetime.strptime(i['date'], "%Y-%m-%d").year == selected_year
     ]
     dept_expense = [
-        e for e in expense_log 
+        e for e in expense_log
         if e['department'] == dept and datetime.strptime(e['date'], "%Y-%m-%d").month == selected_month and datetime.strptime(e['date'], "%Y-%m-%d").year == selected_year
     ]
 
     total_income = sum(i['amount'] for i in dept_income)
     total_expense = sum(e['amount'] for e in dept_expense)
     balance = total_income - total_expense
+
     budget = get_department_budget(dept)
     remaining_budget = budget - total_expense
 
-    # Chart data
+    # Generate chart data
     chart_labels = [f"{selected_year}-{str(m).zfill(2)}" for m in range(1, 13)]
-    chart_income = []
-    chart_expense = []
+    chart_income = [sum(i['amount'] for i in income_log if i['department'] == dept and datetime.strptime(i['date'], "%Y-%m-%d").strftime('%Y-%m') == label) for label in chart_labels]
+    chart_expense = [sum(e['amount'] for e in expense_log if e['department'] == dept and datetime.strptime(e['date'], "%Y-%m-%d").strftime('%Y-%m') == label) for label in chart_labels]
 
-    for m in range(1, 13):
-        income = sum(
-            i['amount'] for i in income_log
-            if i['department'] == dept and datetime.strptime(i['date'], "%Y-%m-%d").month == m and datetime.strptime(i['date'], "%Y-%m-%d").year == selected_year
-        )
-        expense = sum(
-            e['amount'] for e in expense_log
-            if e['department'] == dept and datetime.strptime(e['date'], "%Y-%m-%d").month == m and datetime.strptime(e['date'], "%Y-%m-%d").year == selected_year
-        )
-        chart_income.append(income)
-        chart_expense.append(expense)
-
-# Inside your /dashboard route, before calling render_template
-now = datetime.now()
-selected_month = int(request.args.get('month', now.month))
-selected_year = int(request.args.get('year', now.year))
-current_year = now.year  # ✅ Define current_year here
-return render_template(
-    'dashboard.html',
-    user=session['user'],
-    role=session['role'],
-    dept=dept,
-    budget=budget,
-    total_income=total_income,
-    total_expense=total_expense,
-    balance=balance,
-    remaining_budget=remaining_budget,
-    chart_labels=chart_labels,
-    chart_income=chart_income,
-    chart_expense=chart_expense,
-    now=now,
-    selected_month=selected_month,
-    selected_year=selected_year,
-    current_year=current_year
-)
+    return render_template(
+        'dashboard.html',
+        user=session['user'],
+        role=session['role'],
+        dept=dept,
+        budget={
+            "income": total_income,
+            "expense": total_expense,
+            "limit": budget,
+            "remaining": remaining_budget
+        },
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance,
+        remaining_budget=remaining_budget,
+        chart_labels=chart_labels,
+        chart_income=chart_income,
+        chart_expense=chart_expense,
+        now=now,
+        selected_month=selected_month,
+        selected_year=selected_year,
+        current_year=current_year
+    )
 
 
 
