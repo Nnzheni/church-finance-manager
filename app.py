@@ -1,83 +1,26 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
-import json, os, io
-from datetime import datetime
-import pandas as pd
-
-# optionally, for Google Sheets integration:
-# import gspread
-# from oauth2client.service_account import ServiceAccountCredentials
-
-app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
-
-USERS_FILE    = 'users.json'
-BUDGETS_FILE  = 'budgets.json'
-INCOME_LOG    = 'income_log.json'
-EXPENSE_LOG   = 'expense_log.json'
-
-# ---- Helpers ----
-
-def load_json(fn):
-    if os.path.exists(fn):
-        with open(fn,'r') as f: return json.load(f)
-    return []
-
-def save_json(fn, data):
-    with open(fn,'w') as f: json.dump(data, f, indent=2)
-
-def load_users():
-    return load_json(USERS_FILE)
-
-def load_budgets():
-    return load_json(BUDGETS_FILE)
-
-def get_department_budget(dept):
-    return load_budgets().get(dept, 0.0)
-
-# optionally, Google Sheets hookup:
-# def get_google_sheet(sheet_name):
-#     scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
-#     creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-#     client = gspread.authorize(creds)
-#     return client.open(sheet_name).sheet1
-
-# ---- Routes ----
-
-@app.route('/', methods=['GET','POST'])
-def login():
-    if request.method=='POST':
-        u,p = request.form['username'], request.form['password']
-        users = load_users()
-        if u in users and users[u]['password']==p:
-            session['user'] = u
-            session['role'] = users[u]['role']
-            session['department'] = users[u]['department']
-            return redirect(url_for('dashboard'))
-        flash('Invalid credentials','danger')
-    return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
 from flask import Flask, render_template, request, redirect, url_for, session
 import json, os
 from datetime import datetime
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
-USERS_FILE    = 'users.json'
-BUDGETS_FILE  = 'budgets.json'
-INCOME_LOG    = 'income_log.json'
-EXPENSE_LOG   = 'expense_log.json'
+USERS_FILE      = 'users.json'
+INCOME_LOG_FILE = 'income_log.json'
+EXPENSE_LOG_FILE= 'expense_log.json'
+BUDGETS_FILE    = 'budgets.json'
 
 def load_json(fn):
     if os.path.exists(fn):
-        with open(fn,'r') as f:
+        with open(fn, 'r') as f:
             return json.load(f)
     return []
+
+def save_json(fn, data):
+    with open(fn, 'w') as f:
+        json.dump(data, f, indent=2)
 
 def get_department_budget(dept):
     budgets = load_json(BUDGETS_FILE)
@@ -85,77 +28,73 @@ def get_department_budget(dept):
 
 @app.route('/dashboard')
 def dashboard():
-    # 1) auth check
     if 'user' not in session:
         return redirect(url_for('login'))
 
     dept = session['department']
     role = session['role']
 
-    # 2) date & filters
-    now            = datetime.now()
-    selected_month = int(request.args.get('month', now.month))
-    selected_year  = int(request.args.get('year',  now.year))
-    current_year   = now.year
+    # filter by month/year
+    now = datetime.now()
+    sel_month = int(request.args.get('month', now.month))
+    sel_year  = int(request.args.get('year',  now.year))
 
-    # 3) load logs
-    income_log  = load_json(INCOME_LOG)
-    expense_log = load_json(EXPENSE_LOG)
+    # load logs
+    incomes  = load_json(INCOME_LOG_FILE)
+    expenses = load_json(EXPENSE_LOG_FILE)
 
-    # 4) filter to this dept + month/year
-    def in_period(entry):
-        d = datetime.strptime(entry['date'], '%Y-%m-%d')
-        return entry['department']==dept and d.month==selected_month and d.year==selected_year
+    # filter by dept & date
+    def parse_date(d): return datetime.strptime(d, "%Y-%m-%d")
+    dept_inc = [i for i in incomes
+                if i['department']==dept
+                   and parse_date(i['date']).month==sel_month
+                   and parse_date(i['date']).year==sel_year]
+    dept_exp = [e for e in expenses
+                if e['department']==dept
+                   and parse_date(e['date']).month==sel_month
+                   and parse_date(e['date']).year==sel_year]
 
-    dept_income  = [i for i in income_log  if in_period(i)]
-    dept_expense = [e for e in expense_log if in_period(e)]
+    total_inc = sum(i['amount'] for i in dept_inc)
+    total_exp = sum(e['amount'] for e in dept_exp)
+    balance   = total_inc - total_exp
+    limit     = get_department_budget(dept)
+    remaining = limit - total_exp
 
-    # 5) totals & budget math
-    total_income    = sum(i['amount'] for i in dept_income)
-    total_expense   = sum(e['amount'] for e in dept_expense)
-    budget_limit    = get_department_budget(dept)
-    remaining_budget= budget_limit - total_expense
-
-    # 6) build 12-month chart arrays
-    chart_labels  = [f"{selected_year}-{m:02d}" for m in range(1,13)]
-    chart_income  = [
-        sum(i['amount'] for i in income_log
-            if i['department']==dept
-            and datetime.strptime(i['date'],'%Y-%m-%d').strftime('%Y-%m')==label
-        )
-        for label in chart_labels
+    # chart data: one bar per month of current year
+    labels = [f"{sel_year}-{m:02d}" for m in range(1,13)]
+    chart_inc = [
+        sum(i['amount'] for i in incomes
+            if i['department']==dept and i['date'].startswith(lbl))
+        for lbl in labels
     ]
-    chart_expense = [
-        sum(e['amount'] for e in expense_log
-            if e['department']==dept
-            and datetime.strptime(e['date'],'%Y-%m-%d').strftime('%Y-%m')==label
-        )
-        for label in chart_labels
+    chart_exp = [
+        sum(e['amount'] for e in expenses
+            if e['department']==dept and e['date'].startswith(lbl))
+        for lbl in labels
     ]
 
-    return render_template(
-        'dashboard.html',
+    return render_template('dashboard.html',
         user=session['user'],
-        role=role,
         dept=dept,
-
-        # summary
-        total_income=total_income,
-        total_expense=total_expense,
-        budget_limit=budget_limit,
-        remaining_budget=remaining_budget,
-
-        # filters
-        selected_month=selected_month,
-        selected_year=selected_year,
-        current_year=current_year,
-
-        # chart data
-        chart_labels=chart_labels,
-        chart_income=chart_income,
-        chart_expense=chart_expense
+        role=role,
+        now=now,
+        selected_month=sel_month,
+        selected_year=sel_year,
+        current_year=now.year,
+        total_income=total_inc,
+        total_expense=total_exp,
+        balance=balance,
+        budget_limit=limit,
+        remaining=remaining,
+        chart_labels=labels,
+        chart_income=chart_inc,
+        chart_expense=chart_exp
     )
 
+# ... your other routes ...
+
+if __name__=='__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT',10000)))
 
 @app.route('/add-income', methods=['GET','POST'])
 def add_income():
