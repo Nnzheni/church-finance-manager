@@ -108,8 +108,7 @@ now = datetime.now()
 selected_month = int(request.args.get('month', now.month))
 selected_year = int(request.args.get('year', now.year))
 current_year = now.year  # ✅ Define current_year here
-
-    return render_template(
+return render_template(
     'dashboard.html',
     user=session['user'],
     role=session['role'],
