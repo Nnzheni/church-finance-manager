@@ -103,6 +103,13 @@ def dashboard():
         chart_income.append(income)
         chart_expense.append(expense)
 
+# Inside your /dashboard route, before calling render_template
+now = datetime.now()
+selected_month = int(request.args.get('month', now.month))
+selected_year = int(request.args.get('year', now.year))
+current_year = now.year  # ✅ Define current_year here
+
+# Then render the template correctly:
 return render_template(
     'dashboard.html',
     user=session['user'],
@@ -116,14 +123,12 @@ return render_template(
     chart_labels=chart_labels,
     chart_income=chart_income,
     chart_expense=chart_expense,
-    now=datetime.now(),
-    current_year=selected_year,
-    current_month=selected_month
+    now=now,
+    selected_month=selected_month,
+    selected_year=selected_year,
+    current_year=current_year
 )
 
-)
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
 
 
 
