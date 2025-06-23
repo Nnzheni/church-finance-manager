@@ -187,29 +187,38 @@ def manage_budgets():
 # ─── FINANCE REPORT ──────────────────────────────────────────────────────────
 @app.route('/report')
 def report():
-    dept_f = request.args.get('department','')
-    frm    = request.args.get('from_date','')
-    to     = request.args.get('to_date','')
+    department_filter = request.args.get('department','')
+    frm  = request.args.get('from_date','')
+    to   = request.args.get('to_date','')
 
-    combined = (load_json(INCOME_LOG_FILE) or []) + (load_json(EXPENSE_LOG_FILE) or [])
-    for r in combined:
-        r['type']        = 'Income' if 'note' in r else 'Expense'
-        r['description'] = r.get('note', r.get('category',''))
+    # Tag entries explicitly
+    incomes = load_json(INCOME_LOG)
+    for i in incomes:
+        i['type'] = 'Income'
+        i['description'] = i.get('note', '')
 
-    def keep(r):
-        if dept_f and dept_f.lower() not in r['department'].lower(): return False
-        if frm    and r['date'] < frm: return False
-        if to     and r['date'] > to:  return False
+    expenses = load_json(EXPENSE_LOG)
+    for e in expenses:
+        e['type'] = 'Expense'
+        e['description'] = e.get('note', e.get('category', ''))
+
+    combined = incomes + expenses
+
+    def passes(r):
+        if department_filter and department_filter.lower() not in r['department'].lower(): return False
+        if frm and r['date'] < frm: return False
+        if to and r['date'] > to: return False
         return True
 
-    data = [r for r in combined if keep(r)]
+    data = [r for r in combined if passes(r)]
     data.sort(key=lambda r: r['date'], reverse=True)
+
     return render_template('report.html',
         data=data,
-        department_filter=dept_f,
-        from_date=frm, to_date=to
+        department_filter=department_filter,
+        from_date=frm,
+        to_date=to
     )
-
 
 # ─── EXPORT EXCEL ────────────────────────────────────────────────────────────
 @app.route('/export-excel')
