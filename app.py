@@ -192,12 +192,12 @@ def report():
     to   = request.args.get('to_date','')
 
     # Tag entries explicitly
-    incomes = load_json(INCOME_LOG)
+    incomess = load_json(INCOME_LOG_FILE)
     for i in incomes:
         i['type'] = 'Income'
         i['description'] = i.get('note', '')
 
-    expenses = load_json(EXPENSE_LOG)
+    expenses = load_json(EXPENSE_LOG_FILE)
     for e in expenses:
         e['type'] = 'Expense'
         e['description'] = e.get('note', e.get('category', ''))
