@@ -54,71 +54,59 @@ def logout():
     return redirect(url_for('login'))
 
 # ─── DASHBOARD ────────────────────────────────────────────────────────────────
+from dateutil.relativedelta import relativedelta  # pip install python-dateutil
 @app.route('/dashboard')
 def dashboard():
     if 'user' not in session:
         return redirect(url_for('login'))
 
     dept = session['department']
-    role = session['role']
     now  = datetime.now()
+    m    = int(request.args.get('month', now.month))
+    y    = int(request.args.get('year',  now.year))
 
-    # month/year filter
-    m = int(request.args.get('month', now.month))
-    y = int(request.args.get('year',  now.year))
+    # Load all entries
+    incomes  = load_json(INCOME_LOG_FILE)  or []
+    expenses = load_json(EXPENSE_LOG_FILE) or []
 
-    incomes  = load_json(INCOME_LOG_FILE)
-    expenses = load_json(EXPENSE_LOG_FILE)
+    # Helper to filter by dept+date
+    def filter_month(entries, year, month):
+        return [
+          e for e in entries
+          if e['department']==dept
+          and parse_date(e['date']).year==year
+          and parse_date(e['date']).month==month
+        ]
 
-    # filter by dept & date
-    dept_inc = [
-        i for i in incomes
-        if i['department']==dept
-        and parse_date(i['date']).month==m
-        and parse_date(i['date']).year==y
-    ]
-    dept_exp = [
-        e for e in expenses
-        if e['department']==dept
-        and parse_date(e['date']).month==m
-        and parse_date(e['date']).year==y
-    ]
+    # Current month totals
+    this_inc = filter_month(incomes, y, m)
+    this_exp = filter_month(expenses, y, m)
+    total_inc = sum(e['amount'] for e in this_inc)
+    total_exp = sum(e['amount'] for e in this_exp)
 
-    total_income  = sum(i['amount'] for i in dept_inc)
-    total_expense = sum(e['amount'] for e in dept_exp)
-    balance       = total_income - total_expense
+    # Bank charges for this month (you could store these separately or just subtract manually)
+    # For simplicity let's assume any expense with category=="Bank Charges"
+    bank_charges = sum(e['amount'] for e in this_exp if e.get('category','').lower()=='bank charges')
 
-    limit     = get_department_budget(dept)
-    remaining = limit - total_expense
+    # Opening balance = previous month’s closing
+    prev_date = datetime(y, m, 1) - relativedelta(months=1)
+    prev_inc = sum(e['amount'] for e in filter_month(incomes, prev_date.year, prev_date.month))
+    prev_exp = sum(e['amount'] for e in filter_month(expenses, prev_date.year, prev_date.month))
+    prev_bank = sum(e['amount'] for e in filter_month(expenses, prev_date.year, prev_date.month)
+                    if e.get('category','').lower()=='bank charges')
+    opening_balance = prev_inc - prev_exp - prev_bank
 
-    # Build chart data (12 months of this year)
-    labels    = [f"{y}-{mn:02d}" for mn in range(1,13)]
-    chart_inc = [
-        sum(i['amount'] for i in incomes
-            if i['department']==dept and i['date'].startswith(lbl))
-        for lbl in labels
-    ]
-    chart_exp = [
-        sum(e['amount'] for e in expenses
-            if e['department']==dept and e['date'].startswith(lbl))
-        for lbl in labels
-    ]
+    # Closing for current
+    closing_balance = opening_balance + total_inc - total_exp - bank_charges
+
+    # … chart data generation …
 
     return render_template('dashboard.html',
-        user=session['user'],
-        dept=dept,
-        role=role,
-        now=now,
-        selected_month=m,
-        selected_year=y,
-        current_year=now.year,
-        budget={ 'income': total_income,
-                 'expense': total_expense,
-                 'limit':   limit,
-                 'remaining': remaining },
-        chart_labels=labels,
-        chart_income=chart_inc,
-        chart_expense=chart_exp
+        # … existing context …
+        opening_balance=opening_balance,
+        closing_balance=closing_balance,
+        bank_charges=bank_charges,
+        # … charts / budget …
     )
 
 # ─── ADD INCOME ───────────────────────────────────────────────────────────────
