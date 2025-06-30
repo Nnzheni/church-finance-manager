@@ -209,12 +209,14 @@ def manage_budgets():
     if session.get('role')!='Finance Manager':
         return redirect(url_for('dashboard'))
 
-    budgets = load_json(BUDGETS_FILE, default=dict)
+    # load_json only takes one argument, so fall back to {} explicitly:
+    budgets = load_json(BUDGETS_FILE) or {}
+
     if request.method=='POST':
         for acc in ['Main','Building Fund']:
             try:
                 budgets[acc] = float(request.form.get(acc, budgets.get(acc,0)))
-            except:
+            except ValueError:
                 pass
         save_json(BUDGETS_FILE, budgets)
         flash("Budgets updated","success")
