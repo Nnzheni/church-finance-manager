@@ -116,22 +116,19 @@ def dashboard():
         chart_expense=chart_exp
     )
 
-# ─── NEW ENTRY (INCOME/EXPENSE) ──────────────────────────────────────────
-@app.route('/add_income', methods=['GET','POST'])
+# ─── ADD INCOME ────────────────────────────────────────────────────────────
+@app.route('/add-income', methods=['GET','POST'])
 def add_income():
-    # … your code …
     if 'user' not in session:
         return redirect(url_for('login'))
     role = session['role']
-    dept = session['dept']
+    dept = session['department']
 
-    # only Finance Manager posts to Main/Building Fund
-    # departmental treasurers to their own room
-    valid_accounts = []
+    # permissions:
     if role=='Finance Manager':
         valid_accounts = ['Main','Building Fund']
     elif role=='Senior Pastor':
-        valid_accounts = []  # cannot post
+        valid_accounts = []       # view only
     else:
         valid_accounts = [dept]
 
@@ -142,25 +139,68 @@ def add_income():
             return redirect(url_for('dashboard'))
 
         entry = {
-            'type':        'Income'   if kind=='income'  else 'Expense',
+            'type':        'Income',
             'account':     acc,
             'department':  dept,
-            'category':    request.form['category'],
+            'category':    request.form.get('category',''),
             'description': request.form.get('description',''),
             'date':        request.form['date'],
             'amount':      float(request.form['amount'])
         }
-        entries = load_json(ENTRIES_FILE, default=list)
-        entries.append(entry)
-        save_json(ENTRIES_FILE, entries)
-        flash(f"{kind.title()} saved","success")
+        log = load_json(INCOME_LOG_FILE) or []
+        log.append(entry)
+        save_json(INCOME_LOG_FILE, log)
+        flash("Income saved","success")
         return redirect(url_for('dashboard'))
 
     return render_template(
-      'add_entry.html',
-      kind=kind,
-      valid_accounts=valid_accounts,
-      now=datetime.now()
+        'add_income.html',
+        valid_accounts=valid_accounts,
+        now=datetime.now()
+    )
+
+
+# ─── ADD EXPENSE ───────────────────────────────────────────────────────────
+@app.route('/add-expense', methods=['GET','POST'])
+def add_expense():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    role = session['role']
+    dept = session['department']
+
+    # permissions:
+    if role=='Finance Manager':
+        valid_accounts = ['Main','Building Fund']
+    elif role=='Senior Pastor':
+        valid_accounts = []       # view only
+    else:
+        valid_accounts = [dept]
+
+    if request.method=='POST':
+        acc = request.form['account']
+        if acc not in valid_accounts:
+            flash("Account not permitted","danger")
+            return redirect(url_for('dashboard'))
+
+        entry = {
+            'type':        'Expense',
+            'account':     acc,
+            'department':  dept,
+            'category':    request.form.get('category',''),
+            'description': request.form.get('description',''),
+            'date':        request.form['date'],
+            'amount':      float(request.form['amount'])
+        }
+        log = load_json(EXPENSE_LOG_FILE) or []
+        log.append(entry)
+        save_json(EXPENSE_LOG_FILE, log)
+        flash("Expense saved","success")
+        return redirect(url_for('dashboard'))
+
+    return render_template(
+        'add_expense.html',
+        valid_accounts=valid_accounts,
+        now=datetime.now()
     )
 
 # ─── BUDGET MANAGEMENT ───────────────────────────────────────────────────
