@@ -5,25 +5,23 @@ from flask import (
 import json, os, io
 from datetime import datetime
 import pandas as pd
-- log = load_json(EXPENSE_LOG_FILE) or []
-+ log = load_json(ENTRIES_FILE) or []
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
 
 # ─── FILES ──────────────────────────────────────────────────────────────
-USERS_FILE       = 'users.json'
-INCOME_LOG_FILE  = 'income_log.json'
-EXPENSE_LOG_FILE = 'expense_log.json'
-BUDGETS_FILE     = 'budgets.json'
-ENTRIES_FILE     = 'entries.json'    # if you’re using a unified file
+USERS_FILE        = 'users.json'
+INCOME_LOG_FILE   = 'income_log.json'
+EXPENSE_LOG_FILE  = 'expense_log.json'
+BUDGETS_FILE      = 'budgets.json'
+ENTRIES_FILE      = 'entries.json'    # unified income+expense store
 
 # ─── UTILITIES ──────────────────────────────────────────────────────────
-def load_json(path):
+def load_json(path, default=None):
     if os.path.exists(path):
         with open(path,'r') as f:
             return json.load(f)
-    return []
+    return default() if callable(default) else default
 
 def save_json(path, data):
     with open(path,'w') as f:
@@ -60,30 +58,28 @@ def dashboard():
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    user   = session['user']
-    role   = session['role']
-    dept   = session['dept']
-    now    = datetime.now()
+    user = session['user']
+    role = session['role']
+    dept = session['dept']
+    now  = datetime.now()
 
     # filters
-    acct   = request.args.get('account','Main')
-    m      = int(request.args.get('month', now.month))
-    y      = int(request.args.get('year',  now.year))
+    acct = request.args.get('account', 'Main')
+    m    = int(request.args.get('month', now.month))
+    y    = int(request.args.get('year',  now.year))
 
     # load data
     entries = load_json(ENTRIES_FILE, default=list)
     budgets = load_json(BUDGETS_FILE, default=dict)
 
-    # filter entries by account/department/date
+    # filter entries by auth/filters
     def keep(e):
-        if role=='Senior Pastor':
-            pass
-        elif role=='Finance Manager':
+        if role=='Finance Manager':
             if acct not in ('Main','Building Fund'): return False
-            if e['account']!=acct: return False
-        else:
-            # departmental treasurers only their own dept account
-            if e['account']!=dept: return False
+            if e['account'] != acct:               return False
+        elif role!='Senior Pastor':
+            if e['account'] != dept:                return False
+        # Senior Pastor sees all
         d = parse_date(e['date'])
         return d.year==y and d.month==m
 
@@ -95,26 +91,23 @@ def dashboard():
     limit     = budgets.get(acct if role=='Finance Manager' else dept, 0.0)
     remaining = limit - total_exp
 
-    # chart: 12 months across whole year for selected account/department
-    labels = [f"{y}-{mn:02d}" for mn in range(1,13)]
+    # chart data for the year
+    labels     = [f"{y}-{mn:02d}" for mn in range(1,13)]
     def sum_for(lbl, t):
         return sum(e['amount'] for e in entries
                    if e['type']==t
-                   and e['account' if role=='Finance Manager' else 'account']==
-                       (acct if role=='Finance Manager' else dept)
+                   and (role=='Senior Pastor'
+                        or e['account']==(acct if role=='Finance Manager' else dept))
                    and e['date'].startswith(lbl))
-    chart_inc = [sum_for(lbl,'Income') for lbl in labels]
+    chart_inc = [sum_for(lbl,'Income')  for lbl in labels]
     chart_exp = [sum_for(lbl,'Expense') for lbl in labels]
 
     return render_template('dashboard.html',
         user=user, role=role, dept=dept,
         now=now, selected_month=m, selected_year=y,
-        current_year=now.year,
-        account=acct,
-        total_income=total_inc,
-        total_expense=total_exp,
-        balance=balance,
-        budget_limit=limit,
+        current_year=now.year, account=acct,
+        total_income=total_inc, total_expense=total_exp,
+        balance=balance, budget_limit=limit,
         remaining=remaining,
         chart_labels=labels,
         chart_income=chart_inc,
@@ -126,14 +119,14 @@ def dashboard():
 def add_income():
     if 'user' not in session:
         return redirect(url_for('login'))
-    role = session['role']
-    dept = session['department']
 
-    # permissions:
+    role = session['role']
+    dept = session['dept']
+    # permissions
     if role=='Finance Manager':
         valid_accounts = ['Main','Building Fund']
     elif role=='Senior Pastor':
-        valid_accounts = []       # view only
+        valid_accounts = []  # view only
     else:
         valid_accounts = [dept]
 
@@ -152,32 +145,30 @@ def add_income():
             'date':        request.form['date'],
             'amount':      float(request.form['amount'])
         }
-        log = load_json(INCOME_LOG_FILE) or []
-        log.append(entry)
-        save_json(INCOME_LOG_FILE, log)
+        entries = load_json(ENTRIES_FILE, default=list)
+        entries.append(entry)
+        save_json(ENTRIES_FILE, entries)
         flash("Income saved","success")
         return redirect(url_for('dashboard'))
 
-    return render_template(
-        'add_income.html',
+    return render_template('add_income.html',
         valid_accounts=valid_accounts,
-        now=datetime.now()
+        now=datetime.now().strftime('%Y-%m-%d')
     )
-
 
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
 @app.route('/add-expense', methods=['GET','POST'])
 def add_expense():
     if 'user' not in session:
         return redirect(url_for('login'))
-    role = session['role']
-    dept = session['department']
 
-    # permissions:
+    role = session['role']
+    dept = session['dept']
+    # permissions
     if role=='Finance Manager':
         valid_accounts = ['Main','Building Fund']
     elif role=='Senior Pastor':
-        valid_accounts = []       # view only
+        valid_accounts = []
     else:
         valid_accounts = [dept]
 
@@ -196,16 +187,15 @@ def add_expense():
             'date':        request.form['date'],
             'amount':      float(request.form['amount'])
         }
-        log = load_json(EXPENSE_LOG_FILE) or []
-        log.append(entry)
-        save_json(EXPENSE_LOG_FILE, log)
+        entries = load_json(ENTRIES_FILE, default=list)
+        entries.append(entry)
+        save_json(ENTRIES_FILE, entries)
         flash("Expense saved","success")
         return redirect(url_for('dashboard'))
 
-    return render_template(
-        'add_expense.html',
+    return render_template('add_expense.html',
         valid_accounts=valid_accounts,
-        now=datetime.now()
+        now=datetime.now().strftime('%Y-%m-%d')
     )
 
 # ─── BUDGET MANAGEMENT ───────────────────────────────────────────────────
@@ -214,9 +204,7 @@ def manage_budgets():
     if session.get('role')!='Finance Manager':
         return redirect(url_for('dashboard'))
 
-    # load_json only takes one argument, so fall back to {} explicitly:
-    budgets = load_json(BUDGETS_FILE) or {}
-
+    budgets = load_json(BUDGETS_FILE, default=dict)
     if request.method=='POST':
         for acc in ['Main','Building Fund']:
             try:
@@ -229,33 +217,26 @@ def manage_budgets():
 
     return render_template('manage_budgets.html', budgets=budgets)
 
-# ─── REPORT & EXPORT ─────────────────────────────────────────────────────
+# ─── REPORT & EXPORT ROUTES ────────────────────────────────────────────────
 @app.route('/report')
 def report():
-    # identical to dashboard filters but no budget/chart
+    # alias/dashboard or render a dedicated template
     return redirect(url_for('dashboard'))
 
 @app.route('/export-excel')
 def export_excel():
     return redirect(url_for('dashboard'))
 
-# … all of your @app.route definitions …
-
-
 @app.route('/export-pdf')
 def export_pdf():
-    # … build your `data` list …
-    return render_template(
-      "report_pdf.html",
-      data=data,
-      now=datetime.now()
-    )
+    # your PDF logic here…
+    data = load_json(ENTRIES_FILE, default=list)
+    return render_template('report_pdf.html', data=data, now=datetime.now())
 
-
+# ─── RUN SERVER ────────────────────────────────────────────────────────────
 if __name__=='__main__':
-    # Only one app.run() at the very end of the file
     app.run(
-      host='0.0.0.0',
-      port=int(os.environ.get('PORT',10000)),
-      debug=True
+        host='0.0.0.0',
+        port=int(os.environ.get('PORT',10000)),
+        debug=True
     )
