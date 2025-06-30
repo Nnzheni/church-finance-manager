@@ -117,7 +117,7 @@ def dashboard():
     )
 
 # ─── NEW ENTRY (INCOME/EXPENSE) ──────────────────────────────────────────
-@app.route('/add-income', methods=['GET','POST'])
+@app.route('/add_income', methods=['GET','POST'])
 def add_income():
     # … your code …
     if 'user' not in session:
