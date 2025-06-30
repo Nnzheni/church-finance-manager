@@ -115,18 +115,18 @@
             <i class="bi bi-pie-chart"></i> Monthly Budget
           </div>
           <div class="card-body">
-            <p><strong>Total Income:</strong> R{{ budget.income }}</p>
-            <p><strong>Total Expenses:</strong> R{{ budget.expense }}</p>
-            <p><strong>Limit:</strong> R{{ budget.limit }}</p>
+            <p><strong>Total Income:</strong> R{{ total_income }}</p>
+            <p><strong>Total Expenses:</strong> R{{ total_expense }}</p>
+            <p><strong>Limit:</strong> R{{ budget_limit }}</p>
             <p>
               <strong>Remaining:</strong>
-              <span class="{% if budget.remaining < 0 %}text-danger{% else %}text-success{% endif %}">
-                R{{ budget.remaining }}
+              <span class="{% if remaining < 0 %}text-danger{% else %}text-success{% endif %}">
+                R{{ remaining }}
               </span>
             </p>
-            {% if budget.remaining < 0 %}
+            {% if remaining < 0 %}
             <div class="alert alert-danger py-1 mt-2">
-              🚨 Over budget by R{{ (-budget.remaining)|round(2) }}!
+              🚨 Over budget by R{{ (-remaining)|round(2) }}!
             </div>
             {% endif %}
           </div>
