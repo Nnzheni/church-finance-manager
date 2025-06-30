@@ -5,27 +5,32 @@ from flask import (
 import json, os, io
 from datetime import datetime
 import pandas as pd
+- log = load_json(EXPENSE_LOG_FILE) or []
++ log = load_json(ENTRIES_FILE) or []
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
 
 # ─── FILES ──────────────────────────────────────────────────────────────
-USERS_FILE        = 'users.json'
-ENTRIES_FILE      = 'entries.json'    # holds both income & expense
-BUDGETS_FILE      = 'budgets.json'
+USERS_FILE       = 'users.json'
+INCOME_LOG_FILE  = 'income_log.json'
+EXPENSE_LOG_FILE = 'expense_log.json'
+BUDGETS_FILE     = 'budgets.json'
+ENTRIES_FILE     = 'entries.json'    # if you’re using a unified file
 
 # ─── UTILITIES ──────────────────────────────────────────────────────────
-def load_json(path, default=None):
+def load_json(path):
     if os.path.exists(path):
         with open(path,'r') as f:
             return json.load(f)
-    return default() if callable(default) else default
+    return []
 
 def save_json(path, data):
     with open(path,'w') as f:
         json.dump(data, f, indent=2)
 
-def parse_date(s): return datetime.strptime(s, "%Y-%m-%d")
+def parse_date(s):
+    return datetime.strptime(s, "%Y-%m-%d")
 
 # ─── AUTH ────────────────────────────────────────────────────────────────
 @app.route('/', methods=['GET','POST'])
