@@ -9,19 +9,24 @@
     "role": "Senior Pastor",
     "department": "Main"
   },
-  "mens_leader": {
+  "LMF_Treasurer": {
     "password": "mens2025",
-    "role": "Finance Manager",
+    "role": "Treasurer",
     "department": "Men's Fellowship"
   },
-  "youth_leader": {
+  "Youth_Treasurer": {
     "password": "youth2025",
-    "role": "Finance Manager",
+    "role": "Treasurer",
     "department": "Youth"
- },
-  "sisters_leader": {
+  },
+  "LSF_Treasurer": {
     "password": "sisters2025",
-    "role": "Finance Manager",
+    "role": "Treasurer",
     "department": "Local Sisters Fellowship"
+  },
+  "Children_Treasurer": {
+    "password": "children2025",
+    "role": "Treasurer",
+    "department": "Children Ministry"
   }
 }
