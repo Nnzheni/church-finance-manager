@@ -1,18 +1,17 @@
 const CACHE_NAME    = 'afm-finance-v1';
 const PRECACHE_URLS = [
-  '/',                             // the app shell (login redirects here)
-  '/dashboard',                    // your main SPA route
-  '/static/index.html',            // if you have standalone HTML shells
-  '/static/css/bootstrap.min.css', // bootstrap
+  '/',                             // app shell (login)
+  '/dashboard',                    // dashboard route
+  '/static/css/bootstrap.min.css', // if you self-host Bootstrap
   '/static/js/bootstrap.bundle.min.js',
   '/static/js/chart.min.js',
-  '/static/images/logo.png',       // your church logo
-  // ...add any other static assets you know you'll need offline:
+  '/static/images/logo.png',
+  // add any other static assets you need offline
 ];
 
-// 1. Pre‐cache on install
+// 1. Pre-cache on install
 self.addEventListener('install', event => {
-  console.log('Service Worker: Install');
+  console.log('SW: Install');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(PRECACHE_URLS))
@@ -22,7 +21,7 @@ self.addEventListener('install', event => {
 
 // 2. Activate and clean up old caches
 self.addEventListener('activate', event => {
-  console.log('Service Worker: Activate');
+  console.log('SW: Activate');
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
@@ -37,28 +36,24 @@ self.addEventListener('activate', event => {
 
 // 3. Intercept fetches, serve from cache first
 self.addEventListener('fetch', event => {
-  // only handle GET requests
   if (event.request.method !== 'GET') return;
   
   event.respondWith(
     caches.match(event.request)
       .then(cached => {
-        if (cached) return cached;         // cache hit
-        return fetch(event.request)        // else go to network
-          .then(response => {
-            // optionally update cache for future visits
-            return caches.open(CACHE_NAME).then(cache => {
-              // only cache same‐origin requests
-              if (event.request.url.startsWith(self.location.origin)) {
-                cache.put(event.request, response.clone());
-              }
-              return response;
-            });
+        if (cached) return cached;
+        return fetch(event.request).then(response => {
+          // update cache for future
+          return caches.open(CACHE_NAME).then(cache => {
+            if (event.request.url.startsWith(self.location.origin)) {
+              cache.put(event.request, response.clone());
+            }
+            return response;
           });
+        });
       })
       .catch(() => {
-        // offline fallback (optional)
-        // return caches.match('/static/offline.html');
+        // optional offline fallbacks
       })
   );
 });
