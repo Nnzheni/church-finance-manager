@@ -221,31 +221,48 @@ def report():
 # ─── EXPORT EXCEL ────────────────────────────────────────────────────────────
 @app.route('/export-excel')
 def export_excel():
-    dept_f = request.args.get('department','').lower()
+    dept_f = request.args.get('department','')
     frm    = request.args.get('from_date','')
     to     = request.args.get('to_date','')
 
-    combined = load_json(INCOME_LOG_FILE) + load_json(EXPENSE_LOG_FILE)
+    # load raw lists
+    incomes  = load_json(INCOME_LOG_FILE)  or []
+    expenses = load_json(EXPENSE_LOG_FILE) or []
+    combined = incomes + expenses
+
     rows = []
     for r in combined:
-        if dept_f and dept_f not in r['department'].lower(): continue
-        if frm    and r['date'] < frm: continue
-        if to     and r['date'] > to:  continue
+        # compute type & description locally
+        rtype = 'Income' if 'note' in r else 'Expense'
+        desc  = r.get('note') or r.get('category','')
+
+        # apply same filters as report()
+        if dept_f and dept_f.lower() not in r['department'].lower():
+            continue
+        if frm and r['date'] < frm:
+            continue
+        if to and r['date'] > to:
+            continue
+
         rows.append({
             'Date':        r['date'],
             'Department':  r['department'],
-            'Type':        r['type'],
-            'Description': r['description'],
+            'Type':        rtype,
+            'Description': desc,
             'Amount (R)':  r['amount']
         })
 
-    df = pd.DataFrame(rows)
-    buf = io.BytesIO()
-    with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
+    # now build the DataFrame and send it
+    df     = pd.DataFrame(rows)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Report')
-    buf.seek(0)
-    fname = f"report_{request.args.get('department','all')}_{frm}_{to}.xlsx"
-    return send_file(buf, download_name=fname, as_attachment=True)
+    output.seek(0)
+
+    filename = f"report_{dept_f or 'all'}_{frm}_{to}.xlsx"
+    return send_file(output,
+                     download_name=filename,
+                     as_attachment=True)
 
 # ─── EXPORT PDF ──────────────────────────────────────────────────────────────
 @app.route('/export-pdf')
