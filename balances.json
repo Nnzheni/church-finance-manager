@@ -3,7 +3,24 @@
     "2025-06": { "opening": 12000.00, "closing": 15000.00 },
     "2025-07": { "opening": 15000.00, "closing": 13000.00 }
   },
+  "Building Fund": {
+    "2025-06": { "opening": 8000.00, "closing": 9000.00 },
+    "2025-07": { "opening": 9000.00, "closing": 8500.00 }
+  },
+  "Men's Fellowship": {
+    "2025-06": { "opening": 1000.00, "closing": 1200.00 },
+    "2025-07": { "opening": 1200.00, "closing": 1100.00 }
+  },
   "Youth": {
-    "2025-06": { "opening": 5000.00, "closing": 6000.00 }
+    "2025-06": { "opening": 500.00, "closing": 600.00 },
+    "2025-07": { "opening": 600.00, "closing": 550.00 }
+  },
+  "Local Sisters Fellowship": {
+    "2025-06": { "opening": 2000.00, "closing": 2100.00 },
+    "2025-07": { "opening": 2100.00, "closing": 2050.00 }
+  },
+  "Children Ministry": {
+    "2025-06": { "opening": 3000.00, "closing": 3200.00 },
+    "2025-07": { "opening": 3200.00, "closing": 3100.00 }
   }
 }
