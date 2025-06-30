@@ -193,7 +193,12 @@ def export_excel():
 
 @app.route('/export-pdf')
 def export_pdf():
-    return redirect(url_for('dashboard'))
+    # … build your `data` list …
+    return render_template(
+      "report_pdf.html",
+      data=data,
+      now=datetime.now()
+    )
 
 if __name__=='__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT',10000)), debug=True)
