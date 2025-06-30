@@ -30,17 +30,20 @@
         {% endif %}
       {% endwith %}
 
-      <!-- Department selector for Admins -->
-      {% if session.role == 'Finance Manager' and session.user == 'admin' %}
-      <div class="mb-3">
-        <label class="form-label">Account / Department</label>
-        <select name="department" class="form-select" required>
-          {% for acct in ['Main','Building Fund',"Men's Fellowship",'Youth','Local Sisters Fellowship','Children Ministry'] %}
-            <option value="{{ acct }}">{{ acct }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      {% endif %}
+     <!-- Only show department selector to Finance Manager -->
+     {% if session.role == 'Finance Manager' %}
+       <div class="mb-3">
+         <label class="form-label">Account</label>
+         <select name="account" class="form-select" required>
+           <option value="Main">Main</option>
+           <option value="Building Fund">Building Fund</option>
+         </select>
+       </div>
+     {% else %}
+       <!-- Non-managers always tag to their own department -->
+       <input type="hidden" name="account" value="{{ session.dept }}">
+     {% endif %}
+
 
       <!-- Amount -->
       <div class="mb-3">
