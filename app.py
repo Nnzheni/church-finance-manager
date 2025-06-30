@@ -157,6 +157,7 @@ def add_income():
     )
 
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
+from datetime import datetime
 @app.route('/add-expense', methods=['GET','POST'])
 def add_expense():
     if 'user' not in session:
@@ -193,9 +194,11 @@ def add_expense():
         flash("Expense saved","success")
         return redirect(url_for('dashboard'))
 
-    return render_template('add_expense.html',
-        valid_accounts=valid_accounts,
-        now=datetime.now().strftime('%Y-%m-%d')
+     # When rendering the form, pass a real datetime object into the template:
+    return render_template(
+      'add_expense.html',
+      valid_accounts=valid_accounts,
+      now=datetime.now()
     )
 
 # ─── BUDGET MANAGEMENT ───────────────────────────────────────────────────
