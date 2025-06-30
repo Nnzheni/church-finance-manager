@@ -20,14 +20,16 @@
   <!-- Filter Form -->
   <form method="get" class="row g-3 mb-4 align-items-end">
     <div class="col-md-3">
-      <label class="form-label">Department</label>
+      <label class="form-label">Account / Department</label>
       <select name="department" class="form-select">
-        <option value="" {% if not department_filter %}selected{% endif %}>-- All Departments --</option>
-        {% for dept in ['Main', "Men's Fellowship", 'Youth', 'Local Sisters Fellowship'] %}
-          <option value="{{ dept }}"
-                  {% if dept == department_filter %}selected{% endif %}>
-            {{ dept }}
-          </option>
+        <option value="" {% if not department_filter %}selected{% endif %}>
+          -- All Accounts & Depts --
+        </option>
+        {% for dept in ['Main','Building Fund',"Men's Fellowship",'Youth','Local Sisters Fellowship','Children Ministry'] %}
+        <option value="{{ dept }}"
+                {% if dept == department_filter %}selected{% endif %}>
+          {{ dept }}
+        </option>
         {% endfor %}
       </select>
     </div>
@@ -76,7 +78,7 @@
       <thead class="table-light">
         <tr>
           <th>Date</th>
-          <th>Department</th>
+          <th>Account / Dept</th>
           <th>Type</th>
           <th>Description</th>
           <th class="text-end">Amount (R)</th>
@@ -95,7 +97,9 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="5" class="text-center py-4">No records found</td>
+            <td colspan="5" class="text-center py-4">
+              No records found
+            </td>
           </tr>
         {% endif %}
       </tbody>
