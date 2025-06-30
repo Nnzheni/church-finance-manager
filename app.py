@@ -192,6 +192,9 @@ def report():
 def export_excel():
     return redirect(url_for('dashboard'))
 
+# … all of your @app.route definitions …
+
+
 @app.route('/export-pdf')
 def export_pdf():
     # … build your `data` list …
@@ -201,5 +204,11 @@ def export_pdf():
       now=datetime.now()
     )
 
+
 if __name__=='__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT',10000)), debug=True)
+    # Only one app.run() at the very end of the file
+    app.run(
+      host='0.0.0.0',
+      port=int(os.environ.get('PORT',10000)),
+      debug=True
+    )
