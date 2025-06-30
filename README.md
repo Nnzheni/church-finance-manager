@@ -1,1 +1,1 @@
-# church-finance-manager
+# AFM-RCA-Financial-Management-System
