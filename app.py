@@ -115,56 +115,53 @@ def dashboard():
     )
 
 # ─── ADD INCOME ────────────────────────────────────────────────────────────
-@app.route('/add-income', methods=['GET', 'POST'])
+# ─── ADD INCOME ────────────────────────────────────────────────────────────
+@app.route('/add-income', methods=['GET','POST'])
 def add_income():
-    # redirect anonymous users back to login
     if 'user' not in session:
         return redirect(url_for('login'))
 
     role = session['role']
     dept = session['department']
 
-    # determine which accounts this user may post to
+    # who may post to which accounts:
     if role == 'Finance Manager':
-        valid_accounts = ['Main', 'Building Fund']
+        valid_accounts = ['Main','Building Fund']
     elif role == 'Senior Pastor':
-        valid_accounts = []  # view‐only, cannot post
+        valid_accounts = []      # no posting rights
     else:
-        # departmental treasurer can only post to their own dept account
-        valid_accounts = [dept]
+        valid_accounts = [dept]  # departmental treasurers
 
-    # form submission: validate & save
     if request.method == 'POST':
-        acc = request.form['account']
+        # grab the field named “account” in the template
+        acc = request.form.get('account')
         if acc not in valid_accounts:
-            flash("Account not permitted", "danger")
+            flash("Account not permitted","danger")
             return redirect(url_for('dashboard'))
 
         entry = {
-            'type':        'Income',
+            'type':        request.form['type'],        # e.g. Tithe, Offering
             'account':     acc,
             'department':  dept,
-            'category':    request.form.get('category', ''),
-            'description': request.form.get('description', ''),
+            'description': request.form.get('description',''),
             'date':        request.form['date'],
             'amount':      float(request.form['amount'])
         }
 
+        # append to your income log
         log = load_json(INCOME_LOG_FILE) or []
         log.append(entry)
         save_json(INCOME_LOG_FILE, log)
 
-        flash("Income saved", "success")
+        flash("Income saved","success")
         return redirect(url_for('dashboard'))
 
-    # GET: render the form
+    # GET → show the form
     return render_template(
         'add_income.html',
         valid_accounts=valid_accounts,
         now=datetime.now()
     )
-
-
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
 from datetime import datetime
 @app.route('/add-expense', methods=['GET','POST'])
