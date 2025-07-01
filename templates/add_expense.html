@@ -3,88 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <title>Add Expense – AFM-RCA Finance Manager</title>
-
-  <!-- Bootstrap CSS -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  >
-
-  <!-- PWA & Icons (optional) -->
-  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-  <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-  <meta name="theme-color" content="#00466f">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet">
 </head>
 <body class="bg-light">
-
-  <div class="container mt-5" style="max-width: 600px;">
-    <h3 class="mb-4 text-danger">➖ Add Expense</h3>
-
+  <div class="container mt-5" style="max-width:600px;">
+    <h3 class="mb-4">➖ Add Expense</h3>
     <form method="POST" action="{{ url_for('add_expense') }}">
-      <!-- Flash messages -->
+
       {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, msg in messages %}
-            <div class="alert alert-{{ category }}">{{ msg }}</div>
-          {% endfor %}
-        {% endif %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
       {% endwith %}
 
-     <!-- Only show department selector to Finance Manager -->
-     {% if session.role == 'Finance Manager' %}
-       <div class="mb-3">
-         <label class="form-label">Account</label>
-         <select name="account" class="form-select" required>
-           <option value="Main">Main</option>
-           <option value="Building Fund">Building Fund</option>
-         </select>
-       </div>
-     {% else %}
-       <!-- Non-managers always tag to their own department -->
-       <input type="hidden" name="account" value="{{ session.dept }}">
-     {% endif %}
+      {% if role=='Finance Manager' %}
+      <div class="mb-3">
+        <label class="form-label">Account / Department</label>
+        <select name="account" class="form-select" required>
+          {% for acct in valid_accounts %}
+            <option value="{{ acct }}">{{ acct }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
 
-
-      <!-- Amount -->
       <div class="mb-3">
         <label class="form-label">Amount (R)</label>
-        <input type="number" step="0.01" name="amount" class="form-control" required>
+        <input type="number" step="0.01" name="amount"
+               class="form-control" required>
       </div>
 
-      <!-- Type -->
       <div class="mb-3">
-        <label class="form-label">Type</label>
-        <input type="text"
-               name="type"
-               class="form-control"
-               placeholder="e.g. SARS, Band, Salaries, Electricity"
-               required>
+        <label class="form-label">Description <small>(optional)</small></label>
+        <input type="text" name="description" class="form-control">
       </div>
 
-      <!-- Description -->
-      <div class="mb-3">
-        <label class="form-label">Description (optional)</label>
-        <input type="text"
-               name="description"
-               class="form-control"
-               placeholder="Details or note">
-      </div>
-
-      <!-- Date -->
       <div class="mb-3">
         <label class="form-label">Date</label>
-        <input type="date"
-               name="date"
-               class="form-control"
-               value="{{ now.strftime('%Y-%m-%d') }}"
-               required>
+        <input type="date" name="date" class="form-control"
+               value="{{ now.strftime('%Y-%m-%d') }}" required>
       </div>
 
-      <!-- Buttons -->
-      <button type="submit" class="btn btn-danger">Save Expense</button>
-      <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-danger">💾 Save Expense</button>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Cancel</a>
+      </div>
     </form>
   </div>
-
 </body>
 </html>
