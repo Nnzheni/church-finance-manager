@@ -116,7 +116,7 @@ def dashboard():
 
 # ─── ADD INCOME ────────────────────────────────────────────────────────────
 @app.route('/add-income', methods=['GET','POST'])
- def add_income():
+def add_income():
      if 'user' not in session:
          return redirect(url_for('login'))
      role = session['role']
