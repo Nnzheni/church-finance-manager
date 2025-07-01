@@ -165,12 +165,11 @@ def dashboard():
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
 from datetime import datetime
 @app.route('/add-expense', methods=['GET','POST'])
-def add_expense():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-
-    role = session['role']
-    dept = session['dept']
+ def add_expense():
+     if 'user' not in session:
+         return redirect(url_for('login'))
+     role = session['role']
+     dept = session['department']
     # permissions
     if role=='Finance Manager':
         valid_accounts = ['Main','Building Fund']
@@ -201,11 +200,16 @@ def add_expense():
         return redirect(url_for('dashboard'))
 
      # When rendering the form, pass a real datetime object into the template:
-    return render_template(
-      'add_expense.html',
-      valid_accounts=valid_accounts,
-      now=datetime.now()
-    )
+    -    return render_template(
+-        'add_expense.html',
+-        valid_accounts=valid_accounts
+-    )
++    # same here: pass a real datetime into the template
++    return render_template(
++        'add_expense.html',
++        valid_accounts=valid_accounts,
++        now=datetime.now()
++    )
 
 # ─── BUDGET MANAGEMENT ───────────────────────────────────────────────────
 @app.route('/budgets', methods=['GET','POST'])
@@ -226,21 +230,117 @@ def manage_budgets():
 
     return render_template('manage_budgets.html', budgets=budgets)
 
-# ─── REPORT & EXPORT ROUTES ────────────────────────────────────────────────
+# ─── FINANCE REPORT & EXPORT ─────────────────────────────────────────────────
+
 @app.route('/report')
 def report():
-    # alias/dashboard or render a dedicated template
-    return redirect(url_for('dashboard'))
+    # grab filters from querystring
+    dept_f = request.args.get('department', '')
+    frm    = request.args.get('from_date', '')
+    to     = request.args.get('to_date', '')
+
+    # load and tag entries
+    incomes  = load_json(INCOME_LOG_FILE)  or []
+    expenses = load_json(EXPENSE_LOG_FILE) or []
+    for i in incomes:
+        i['type']        = 'Income'
+        i['description'] = i.get('description', i.get('category', i.get('note', '')))
+    for e in expenses:
+        e['type']        = 'Expense'
+        e['description'] = e.get('description', e.get('category', e.get('note', '')))
+
+    # merge & filter
+    combined = incomes + expenses
+    def passes(r):
+        if dept_f and dept_f.lower() not in r['department'].lower(): return False
+        if frm   and r['date']        < frm: return False
+        if to    and r['date']        > to:  return False
+        return True
+
+    data = [r for r in combined if passes(r)]
+    data.sort(key=lambda r: r['date'], reverse=True)
+
+    return render_template(
+      'report.html',
+      data=data,
+      department_filter=dept_f,
+      from_date=frm,
+      to_date=to
+    )
+
 
 @app.route('/export-excel')
 def export_excel():
-    return redirect(url_for('dashboard'))
+    # re-use same filtering logic
+    dept_f = request.args.get('department', '')
+    frm    = request.args.get('from_date', '')
+    to     = request.args.get('to_date', '')
+
+    incomes  = load_json(INCOME_LOG_FILE)  or []
+    expenses = load_json(EXPENSE_LOG_FILE) or []
+    rows = []
+
+    for r in incomes + expenses:
+        rtype = 'Income' if r.get('type','').lower()=='income' else 'Expense'
+        desc  = r.get('description', r.get('category', r.get('note','')))
+        if dept_f and dept_f.lower() not in r['department'].lower(): continue
+        if frm   and r['date'] < frm: continue
+        if to    and r['date'] > to:  continue
+
+        rows.append({
+          'Date':        r['date'],
+          'Department':  r['department'],
+          'Type':        rtype,
+          'Description': desc,
+          'Amount (R)':  r['amount']
+        })
+
+    df     = pd.DataFrame(rows)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Report')
+    output.seek(0)
+
+    fn = f"report_{dept_f or 'all'}_{frm}_{to}.xlsx"
+    return send_file(output,
+                     download_name=fn,
+                     as_attachment=True)
+
 
 @app.route('/export-pdf')
 def export_pdf():
-    # your PDF logic here…
-    data = load_json(ENTRIES_FILE, default=list)
-    return render_template('report_pdf.html', data=data, now=datetime.now())
+    # same data & filter
+    dept_f = request.args.get('department', '')
+    frm    = request.args.get('from_date', '')
+    to     = request.args.get('to_date', '')
+
+    incomes  = load_json(INCOME_LOG_FILE)  or []
+    expenses = load_json(EXPENSE_LOG_FILE) or []
+    rows = []
+
+    for r in incomes + expenses:
+        rtype = 'Income' if r.get('type','').lower()=='income' else 'Expense'
+        desc  = r.get('description', r.get('category', r.get('note','')))
+        if dept_f and dept_f.lower() not in r['department'].lower(): continue
+        if frm   and r['date'] < frm: continue
+        if to    and r['date'] > to:  continue
+
+        rows.append({
+          'date':        r['date'],
+          'department':  r['department'],
+          'type':        rtype,
+          'description': desc,
+          'amount':      r['amount']
+        })
+
+    # most recent first
+    rows.sort(key=lambda x: x['date'], reverse=True)
+    return render_template(
+      'report_pdf.html',
+      data=rows,
+      now=lambda: datetime.now()
+    )
+
 
 # ─── RUN SERVER ────────────────────────────────────────────────────────────
 if __name__=='__main__':
