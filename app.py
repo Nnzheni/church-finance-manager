@@ -116,12 +116,11 @@ def dashboard():
 
 # ─── ADD INCOME ────────────────────────────────────────────────────────────
 @app.route('/add-income', methods=['GET','POST'])
-def add_income():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-
-    role = session['role']
-    dept = session['dept']
+ def add_income():
+     if 'user' not in session:
+         return redirect(url_for('login'))
+     role = session['role']
+     dept = session['department']
     # permissions
     if role=='Finance Manager':
         valid_accounts = ['Main','Building Fund']
@@ -151,10 +150,17 @@ def add_income():
         flash("Income saved","success")
         return redirect(url_for('dashboard'))
 
-    return render_template('add_income.html',
-        valid_accounts=valid_accounts,
-        now=datetime.now().strftime('%Y-%m-%d')
-    )
+    -    return render_template(
+-        'add_income.html',
+-        valid_accounts=valid_accounts
+-    )
++    # on GET, we need to supply `now` so the date‐picker can do now.strftime()
++    return render_template(
++        'add_income.html',
++        valid_accounts=valid_accounts,
++        now=datetime.now()
++    )
+
 
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
 from datetime import datetime
