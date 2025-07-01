@@ -123,31 +123,30 @@ def add_income():
     role = session['role']
     dept = session['department']
 
-    # who may post to which accounts:
+    # build valid_accounts
     if role == 'Finance Manager':
-        valid_accounts = ['Main','Building Fund']
+        valid_accounts = ['Main', 'Building Fund']
     elif role == 'Senior Pastor':
-        valid_accounts = []      # no posting rights
+        valid_accounts = []            # view only
     else:
-        valid_accounts = [dept]  # departmental treasurers
+        valid_accounts = [dept]        # departmental treasurers
 
     if request.method == 'POST':
-        # grab the field named “account” in the template
-        acc = request.form.get('account')
+        # pull from <select name="account">
+        acc = request.form['account']
+
         if acc not in valid_accounts:
-            flash("Account not permitted","danger")
+            flash("Account not permitted", "danger")
             return redirect(url_for('dashboard'))
 
         entry = {
-            'type':        request.form['type'],        # e.g. Tithe, Offering
+            'type':        request.form['type'],
             'account':     acc,
             'department':  dept,
             'description': request.form.get('description',''),
             'date':        request.form['date'],
             'amount':      float(request.form['amount'])
         }
-
-        # append to your income log
         log = load_json(INCOME_LOG_FILE) or []
         log.append(entry)
         save_json(INCOME_LOG_FILE, log)
@@ -155,12 +154,14 @@ def add_income():
         flash("Income saved","success")
         return redirect(url_for('dashboard'))
 
-    # GET → show the form
+    # GET → render with required context
     return render_template(
-        'add_income.html',
-        valid_accounts=valid_accounts,
-        now=datetime.now()
+      'add_income.html',
+      role=role,
+      valid_accounts=valid_accounts,
+      now=datetime.now()
     )
+
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
 # ─── ADD EXPENSE ────────────────────────────────────────────────────────────
 @app.route('/add-expense', methods=['GET','POST'])
