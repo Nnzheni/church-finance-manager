@@ -115,7 +115,6 @@ def dashboard():
     )
 
 # ─── ADD INCOME ────────────────────────────────────────────────────────────
-# ─── ADD INCOME ────────────────────────────────────────────────────────────
 @app.route('/add-income', methods=['GET','POST'])
 def add_income():
     if 'user' not in session:
@@ -163,7 +162,7 @@ def add_income():
         now=datetime.now()
     )
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
-from datetime import datetime
+# ─── ADD EXPENSE ────────────────────────────────────────────────────────────
 @app.route('/add-expense', methods=['GET','POST'])
 def add_expense():
     if 'user' not in session:
@@ -172,16 +171,16 @@ def add_expense():
     role = session['role']
     dept = session['department']
 
-    # permissions:
+    # who may post where
     if role == 'Finance Manager':
-        valid_accounts = ['Main', 'Building Fund']
+        valid_accounts = ['Main','Building Fund']
     elif role == 'Senior Pastor':
-        valid_accounts = []  # view only
+        valid_accounts = []      # no posting rights
     else:
-        valid_accounts = [dept]
+        valid_accounts = [dept]  # their own dept
 
     if request.method == 'POST':
-        acc = request.form['account']
+        acc = request.form.get('account')
         if acc not in valid_accounts:
             flash("Account not permitted","danger")
             return redirect(url_for('dashboard'))
@@ -190,18 +189,18 @@ def add_expense():
             'type':        'Expense',
             'account':     acc,
             'department':  dept,
-            'category':    request.form.get('category',''),
             'description': request.form.get('description',''),
             'date':        request.form['date'],
             'amount':      float(request.form['amount'])
         }
+
         log = load_json(EXPENSE_LOG_FILE) or []
         log.append(entry)
         save_json(EXPENSE_LOG_FILE, log)
+
         flash("Expense saved","success")
         return redirect(url_for('dashboard'))
 
-    # GET falls through here
     return render_template(
         'add_expense.html',
         valid_accounts=valid_accounts,
