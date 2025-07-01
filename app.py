@@ -122,7 +122,7 @@ def add_income():
      role = session['role']
      dept = session['department']
     # permissions
-    if role=='Finance Manager':
+    if role== 'Finance Manager':
         valid_accounts = ['Main','Building Fund']
     elif role=='Senior Pastor':
         valid_accounts = []  # view only
