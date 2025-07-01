@@ -163,7 +163,6 @@ def add_income():
     )
 
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
-# ─── ADD EXPENSE ────────────────────────────────────────────────────────────
 @app.route('/add-expense', methods=['GET','POST'])
 def add_expense():
     if 'user' not in session:
@@ -172,38 +171,39 @@ def add_expense():
     role = session['role']
     dept = session['department']
 
-    # who may post where
+    # Build the list of accounts this user may post to
     if role == 'Finance Manager':
-        valid_accounts = ['Main','Building Fund']
+        valid_accounts = ['Main', 'Building Fund']
     elif role == 'Senior Pastor':
-        valid_accounts = []      # no posting rights
+        valid_accounts = []            # view-only, no posting
     else:
-        valid_accounts = [dept]  # their own dept
+        valid_accounts = [dept]        # departmental treasurers
 
     if request.method == 'POST':
-        acc = request.form.get('account')
+        acc = request.form['account']
         if acc not in valid_accounts:
-            flash("Account not permitted","danger")
+            flash("Account not permitted", "danger")
             return redirect(url_for('dashboard'))
 
         entry = {
             'type':        'Expense',
             'account':     acc,
             'department':  dept,
-            'description': request.form.get('description',''),
+            'description': request.form.get('description', ''),
             'date':        request.form['date'],
             'amount':      float(request.form['amount'])
         }
-
         log = load_json(EXPENSE_LOG_FILE) or []
         log.append(entry)
         save_json(EXPENSE_LOG_FILE, log)
 
-        flash("Expense saved","success")
+        flash("Expense saved", "success")
         return redirect(url_for('dashboard'))
 
+    # GET → render with exactly the three variables your template needs:
     return render_template(
         'add_expense.html',
+        role=role,
         valid_accounts=valid_accounts,
         now=datetime.now()
     )
