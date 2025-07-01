@@ -121,10 +121,10 @@ def add_income():
          return redirect(url_for('login'))
      role = session['role']
      dept = session['department']
-    # permissions
-    if role== 'Finance Manager':
-        valid_accounts = ['Main','Building Fund']
-    elif role=='Senior Pastor':
+    # permissions:
+    if role == 'Finance Manager':
+        valid_accounts = ['Main', 'Building Fund']
+    elif role == 'Senior Pastor':
         valid_accounts = []  # view only
     else:
         valid_accounts = [dept]
