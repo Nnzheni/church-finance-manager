@@ -184,26 +184,26 @@ def add_expense():
         if acc not in valid_accounts:
             flash("Account not permitted", "danger")
             return redirect(url_for('dashboard'))
+       # grab the new “type” field:
+       subtype = request.form['type']
 
-        entry = {
+       entry = {
             'type':        'Expense',
+            'subtype':     subtype,           # <-- store it here
             'account':     acc,
             'department':  dept,
-            'description': request.form.get('description', ''),
+            'description': request.form.get('description',''),
             'date':        request.form['date'],
             'amount':      float(request.form['amount'])
         }
         log = load_json(EXPENSE_LOG_FILE) or []
         log.append(entry)
         save_json(EXPENSE_LOG_FILE, log)
-
-        flash("Expense saved", "success")
+        flash("Expense saved","success")
         return redirect(url_for('dashboard'))
 
-    # GET → render with exactly the three variables your template needs:
     return render_template(
         'add_expense.html',
-        role=role,
         valid_accounts=valid_accounts,
         now=datetime.now()
     )
