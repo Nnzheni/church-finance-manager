@@ -121,58 +121,55 @@ def add_income():
         return redirect(url_for('login'))
 
     role = session['role']
-    dept = session['dept']        # <<–– use 'dept' here
+    dept = session['dept']
 
-    # Finance Manager can pick, others default to their dept
+    # Finance Manager may pick Main/Building; everyone else is locked to their own dept
     if role == 'Finance Manager':
         valid_accounts = ['Main', 'Building Fund']
     elif role == 'Senior Pastor':
-        valid_accounts = []  # view-only
+        valid_accounts = []            # view-only
     else:
         valid_accounts = [dept]
 
     if request.method == 'POST':
+        # pick or validate account
         if role == 'Finance Manager':
             account = request.form['account']
             if account not in valid_accounts:
-                flash('Account not permitted','danger')
-                return redirect(url_for('dashboard'))
+                flash('Account not permitted', 'danger')
+                return redirect(url_for('add_income'))
         else:
             account = dept
 
-        subtype     = request.form['type']
-        description = request.form.get('description','')
-        date        = request.form['date']
-        amount      = float(request.form['amount'])
-
+        # build the entry
         entry = {
             'type':        'Income',
-            'subtype':     subtype,
+            'subtype':     request.form.get('type', '').strip(),
             'account':     account,
             'department':  dept,
-            'description': description,
-            'date':        date,
-            'amount':      amount
+            'description': request.form.get('description','').strip(),
+            'date':        request.form['date'],
+            'amount':      float(request.form['amount'])
         }
 
-        incomes = load_json(INCOME_LOG_FILE) or []
-        incomes.append(entry)
-        save_json(INCOME_LOG_FILE, incomes)
+        # append to unified entries.json
+        entries = load_json(ENTRIES_FILE, default=list)
+        entries.append(entry)
+        save_json(ENTRIES_FILE, entries)
 
-        flash('Income saved','success')
+        flash('Income saved', 'success')
         return redirect(url_for('dashboard'))
 
     # GET → render form
     return render_template(
         'add_income.html',
         valid_accounts=valid_accounts,
-        role=role,                    # pass role so your template can check it
+        role=role,
         now=datetime.now()
     )
 
-
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
-@app.route('/add-expense', methods=['GET', 'POST'])
+@app.route('/add-expense', methods=['GET','POST'])
 def add_expense():
     if 'user' not in session:
         return redirect(url_for('login'))
@@ -180,53 +177,46 @@ def add_expense():
     role = session['role']
     dept = session['dept']
 
-    # Finance Manager picks Main/Building Fund; others stuck to their own dept
     if role == 'Finance Manager':
         valid_accounts = ['Main', 'Building Fund']
     elif role == 'Senior Pastor':
-        valid_accounts = []    # view-only
+        valid_accounts = []
     else:
         valid_accounts = [dept]
 
     if request.method == 'POST':
-        # determine account
         if role == 'Finance Manager':
             account = request.form['account']
             if account not in valid_accounts:
                 flash('Account not permitted', 'danger')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('add_expense'))
         else:
             account = dept
 
-        subtype     = request.form['type']
-        description = request.form.get('description', '')
-        date        = request.form['date']
-        amount      = float(request.form['amount'])
-
         entry = {
             'type':        'Expense',
-            'subtype':     subtype,
+            'subtype':     request.form.get('type', '').strip(),
             'account':     account,
             'department':  dept,
-            'description': description,
-            'date':        date,
-            'amount':      amount
+            'description': request.form.get('description','').strip(),
+            'date':        request.form['date'],
+            'amount':      float(request.form['amount'])
         }
 
-        expenses = load_json(EXPENSE_LOG_FILE) or []
-        expenses.append(entry)
-        save_json(EXPENSE_LOG_FILE, expenses)
+        entries = load_json(ENTRIES_FILE, default=list)
+        entries.append(entry)
+        save_json(ENTRIES_FILE, entries)
 
         flash('Expense saved', 'success')
         return redirect(url_for('dashboard'))
 
-    # GET → render form
     return render_template(
         'add_expense.html',
         valid_accounts=valid_accounts,
         role=role,
         now=datetime.now()
     )
+
 
 
 
