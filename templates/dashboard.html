@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Dashboard – AFM-RCA Finance Manager</title>
 
-  <!-- PWA & Icons -->
+  <!-- PWA manifest & icons -->
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
   <meta name="theme-color" content="#00466f">
@@ -49,13 +49,13 @@
   </nav>
 
   <div class="container my-5">
-    <!-- Header & Filters -->
+    <!-- Heading & Filters -->
     <div class="row align-items-center mb-4">
-      <div class="col-12 col-md-6">
+      <div class="col-md-6">
         <h3 class="mb-0">Welcome, {{ user }} 👋</h3>
         <small class="text-muted">Summary for {{ now.strftime('%B %Y') }}</small>
       </div>
-      <div class="col-12 col-md-6 text-md-end mt-3 mt-md-0">
+      <div class="col-md-6 text-md-end">
         <form method="get" class="row gx-2 gy-2 justify-content-md-end">
           <div class="col-auto">
             <select name="month" class="form-select form-select-sm">
@@ -79,7 +79,7 @@
     </div>
 
     <!-- Action Buttons -->
-    {% if role == 'Finance Manager' %}
+    {% if role=='Finance Manager' %}
     <div class="d-flex flex-wrap gap-2 mb-4">
       <a href="{{ url_for('add_income') }}" class="btn btn-success">
         <i class="bi bi-plus-circle"></i> Add Income
@@ -91,16 +91,16 @@
         <i class="bi bi-file-earmark-text"></i> View Report
       </a>
       <a href="{{ url_for('manage_budgets') }}" class="btn btn-warning">
-        <i class="bi bi-currency-rand"></i> Manage Budgets
+        <i class="bi bi-currency-dollar"></i> Manage Budgets
       </a>
     </div>
     {% endif %}
 
-    <!-- CARDS -->
+    <!-- Cards (mobile stack in order: 1=Overview, 2=Budget, 3=Chart) -->
     <div class="row gy-4">
       <!-- Overview -->
-      <div class="col-12 col-md-4">
-        <div class="card shadow-sm h-100">
+      <div class="col-12 col-md-4 order-1">
+        <div class="card shadow-sm">
           <div class="card-header bg-primary text-white">
             <i class="bi bi-info-circle"></i> Overview
           </div>
@@ -111,8 +111,8 @@
       </div>
 
       <!-- Monthly Budget -->
-      <div class="col-12 col-md-4">
-        <div class="card shadow-sm h-100">
+      <div class="col-12 col-md-4 order-2">
+        <div class="card shadow-sm">
           <div class="card-header bg-warning text-dark">
             <i class="bi bi-pie-chart"></i> Monthly Budget
           </div>
@@ -135,13 +135,13 @@
         </div>
       </div>
 
-      <!-- Income vs Expense -->
-      <div class="col-12 col-md-4">
-        <div class="card shadow-sm h-100">
+      <!-- Income vs Expense Chart -->
+      <div class="col-12 col-md-4 order-3">
+        <div class="card shadow-sm">
           <div class="card-header bg-info text-white">
             <i class="bi bi-bar-chart-line"></i> Income vs Expense
           </div>
-          <div class="card-body d-flex align-items-center justify-content-center">
+          <div class="card-body">
             <canvas id="incomeExpenseChart" height="200"></canvas>
           </div>
         </div>
@@ -149,9 +149,8 @@
     </div>
   </div>
 
-  <!-- SCRIPTS -->
+  <!-- Bootstrap JS + Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     new Chart(
@@ -161,7 +160,7 @@
         data: {
           labels: {{ chart_labels|tojson }},
           datasets: [
-            { label: 'Income',  data: {{ chart_income|tojson }}, backgroundColor: 'rgba(40,167,69,0.7)' },
+            { label: 'Income', data: {{ chart_income|tojson }}, backgroundColor: 'rgba(40,167,69,0.7)' },
             { label: 'Expense', data: {{ chart_expense|tojson }}, backgroundColor: 'rgba(220,53,69,0.7)' }
           ]
         },
@@ -169,6 +168,5 @@
       }
     );
   </script>
-
 </body>
 </html>
