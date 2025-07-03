@@ -226,9 +226,6 @@ def add_expense():
         now=datetime.now()
     )
 
-
-
-
 # ─── BUDGET MANAGEMENT ───────────────────────────────────────────────────
 @app.route('/budgets', methods=['GET','POST'])
 def manage_budgets():
@@ -281,80 +278,86 @@ def report():
       to_date=to
     )
 
-
-
+# ─── EXPORT EXCEL ─────────────────────────────────────────────────────────
 @app.route('/export-excel')
 def export_excel():
-    # re-use same filtering logic
-    dept_f = request.args.get('department', '')
+    # 1) grab filters
+    dept_f = request.args.get('department', '').lower()
     frm    = request.args.get('from_date', '')
     to     = request.args.get('to_date', '')
 
-    incomes  = load_json(INCOME_LOG_FILE)  or []
-    expenses = load_json(EXPENSE_LOG_FILE) or []
+    # 2) load & filter
+    entries = load_json(ENTRIES_FILE, default=list) or []
     rows = []
-
-    for r in incomes + expenses:
-        rtype = 'Income' if r.get('type','').lower()=='income' else 'Expense'
-        desc  = r.get('description', r.get('category', r.get('note','')))
-        if dept_f and dept_f.lower() not in r['department'].lower(): continue
-        if frm   and r['date'] < frm: continue
-        if to    and r['date'] > to:  continue
+    for e in entries:
+        if dept_f and dept_f not in e['department'].lower():
+            continue
+        if frm and e['date'] < frm:
+            continue
+        if to and e['date'] > to:
+            continue
 
         rows.append({
-          'Date':        r['date'],
-          'Department':  r['department'],
-          'Type':        rtype,
-          'Description': desc,
-          'Amount (R)':  r['amount']
+            'Date':        e['date'],
+            'Department':  e['department'],
+            'Type':        e['type'],
+            'Subtype':     e.get('subtype',''),
+            'Description': e.get('description',''),
+            'Amount (R)':  e['amount']
         })
 
-    df     = pd.DataFrame(rows)
+    # 3) build DataFrame & Excel
+    df = pd.DataFrame(rows)
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Report')
     output.seek(0)
 
-    fn = f"report_{dept_f or 'all'}_{frm}_{to}.xlsx"
-    return send_file(output,
-                     download_name=fn,
-                     as_attachment=True)
+    # 4) send
+    filename = f"report_{dept_f or 'all'}_{frm}_{to}.xlsx"
+    return send_file(
+        output,
+        download_name=filename,
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
-
+# ─── EXPORT PDF ───────────────────────────────────────────────────────────
 @app.route('/export-pdf')
 def export_pdf():
-    # same data & filter
-    dept_f = request.args.get('department', '')
+    # same filters
+    dept_f = request.args.get('department', '').lower()
     frm    = request.args.get('from_date', '')
     to     = request.args.get('to_date', '')
 
-    incomes  = load_json(INCOME_LOG_FILE)  or []
-    expenses = load_json(EXPENSE_LOG_FILE) or []
+    # load & filter
+    entries = load_json(ENTRIES_FILE, default=list) or []
     rows = []
-
-    for r in incomes + expenses:
-        rtype = 'Income' if r.get('type','').lower()=='income' else 'Expense'
-        desc  = r.get('description', r.get('category', r.get('note','')))
-        if dept_f and dept_f.lower() not in r['department'].lower(): continue
-        if frm   and r['date'] < frm: continue
-        if to    and r['date'] > to:  continue
+    for e in entries:
+        if dept_f and dept_f not in e['department'].lower():
+            continue
+        if frm and e['date'] < frm:
+            continue
+        if to and e['date'] > to:
+            continue
 
         rows.append({
-          'date':        r['date'],
-          'department':  r['department'],
-          'type':        rtype,
-          'description': desc,
-          'amount':      r['amount']
+            'date':        e['date'],
+            'department':  e['department'],
+            'type':        e['type'],
+            'subtype':     e.get('subtype',''),
+            'description': e.get('description',''),
+            'amount':      e['amount']
         })
 
-    # most recent first
     rows.sort(key=lambda x: x['date'], reverse=True)
-    return render_template(
-      'report_pdf.html',
-      data=rows,
-      now=lambda: datetime.now()
-    )
 
+    # render your PDF-friendly template
+    return render_template(
+        'report_pdf.html',
+        data=rows,
+        now=datetime.now()
+    )
 
 # ─── RUN SERVER ────────────────────────────────────────────────────────────
 if __name__=='__main__':
