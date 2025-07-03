@@ -9,7 +9,11 @@ import pandas as pd                # ← this line must be present
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
+ENTRIES_FILE = 'entries.json'   # your unified income+expense store
 
+def load_json(path, default):
+    # … your existing load_json implementation …
+    pass
 # ─── FILES ──────────────────────────────────────────────────────────────
 USERS_FILE    = 'users.json'
 BUDGETS_FILE  = 'budgets.json'
