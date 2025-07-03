@@ -115,34 +115,33 @@ def dashboard():
     )
 
 # ─── ADD INCOME ────────────────────────────────────────────────────────────
-@app.route('/add-income', methods=['GET', 'POST'])
+@app.route('/add-income', methods=['GET','POST'])
 def add_income():
     if 'user' not in session:
         return redirect(url_for('login'))
 
     role = session['role']
-    dept = session['department']
+    dept = session['dept']        # <<–– use 'dept' here
 
-    # Finance Manager chooses account; everyone else stuck in their dept
+    # Finance Manager can pick, others default to their dept
     if role == 'Finance Manager':
         valid_accounts = ['Main', 'Building Fund']
     elif role == 'Senior Pastor':
-        valid_accounts = []    # view only
+        valid_accounts = []  # view-only
     else:
         valid_accounts = [dept]
 
     if request.method == 'POST':
-        # pick account (if finance manager) else forced to dept
         if role == 'Finance Manager':
             account = request.form['account']
             if account not in valid_accounts:
-                flash('Account not permitted', 'danger')
+                flash('Account not permitted','danger')
                 return redirect(url_for('dashboard'))
         else:
             account = dept
 
         subtype     = request.form['type']
-        description = request.form.get('description', '')
+        description = request.form.get('description','')
         date        = request.form['date']
         amount      = float(request.form['amount'])
 
@@ -160,14 +159,14 @@ def add_income():
         incomes.append(entry)
         save_json(INCOME_LOG_FILE, incomes)
 
-        flash('Income saved', 'success')
+        flash('Income saved','success')
         return redirect(url_for('dashboard'))
 
-    # on GET, show the form
+    # GET → render form
     return render_template(
         'add_income.html',
         valid_accounts=valid_accounts,
-        role=role,
+        role=role,                    # pass role so your template can check it
         now=datetime.now()
     )
 
@@ -179,7 +178,7 @@ def add_expense():
         return redirect(url_for('login'))
 
     role = session['role']
-    dept = session['department']
+    dept = session['dept']
 
     # Finance Manager picks Main/Building Fund; others stuck to their own dept
     if role == 'Finance Manager':
