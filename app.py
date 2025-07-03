@@ -121,7 +121,7 @@ def add_income():
         return redirect(url_for('login'))
 
     role = session['role']
-    dept = session['department']
+    dept = session['dept']
 
     # build valid_accounts
     if role == 'Finance Manager':
@@ -169,7 +169,7 @@ def add_expense():
         return redirect(url_for('login'))
 
     role = session['role']
-    dept = session['department']
+    dept = session['dept']
 
     # Build the list of accounts this user may post to
     if role == 'Finance Manager':
