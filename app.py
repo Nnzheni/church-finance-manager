@@ -172,52 +172,64 @@ def add_income():
     )
 
 
-
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
-@app.route('/add-expense', methods=['GET','POST'])
+@app.route('/add-expense', methods=['GET', 'POST'])
 def add_expense():
     if 'user' not in session:
         return redirect(url_for('login'))
 
     role = session['role']
-    dept = session['dept']
+    dept = session['department']
 
-    # Build the list of accounts this user may post to
+    # Finance Manager picks Main/Building Fund; others stuck to their own dept
     if role == 'Finance Manager':
         valid_accounts = ['Main', 'Building Fund']
     elif role == 'Senior Pastor':
-        valid_accounts = []            # view-only, no posting
+        valid_accounts = []    # view-only
     else:
-        valid_accounts = [dept]        # departmental treasurers
+        valid_accounts = [dept]
 
     if request.method == 'POST':
-        acc = request.form['account']
-        if acc not in valid_accounts:
-            flash("Account not permitted", "danger")
-            return redirect(url_for('dashboard'))
-       # grab the new “type” field:
-       subtype = request.form['type']
+        # determine account
+        if role == 'Finance Manager':
+            account = request.form['account']
+            if account not in valid_accounts:
+                flash('Account not permitted', 'danger')
+                return redirect(url_for('dashboard'))
+        else:
+            account = dept
 
-       entry = {
+        subtype     = request.form['type']
+        description = request.form.get('description', '')
+        date        = request.form['date']
+        amount      = float(request.form['amount'])
+
+        entry = {
             'type':        'Expense',
-            'subtype':     subtype,           # <-- store it here
-            'account':     acc,
+            'subtype':     subtype,
+            'account':     account,
             'department':  dept,
-            'description': request.form.get('description',''),
-            'date':        request.form['date'],
-            'amount':      float(request.form['amount'])
+            'description': description,
+            'date':        date,
+            'amount':      amount
         }
-        log = load_json(EXPENSE_LOG_FILE) or []
-        log.append(entry)
-        save_json(EXPENSE_LOG_FILE, log)
-        flash("Expense saved","success")
+
+        expenses = load_json(EXPENSE_LOG_FILE) or []
+        expenses.append(entry)
+        save_json(EXPENSE_LOG_FILE, expenses)
+
+        flash('Expense saved', 'success')
         return redirect(url_for('dashboard'))
 
+    # GET → render form
     return render_template(
         'add_expense.html',
         valid_accounts=valid_accounts,
+        role=role,
         now=datetime.now()
     )
+
+
 
 # ─── BUDGET MANAGEMENT ───────────────────────────────────────────────────
 @app.route('/budgets', methods=['GET','POST'])
