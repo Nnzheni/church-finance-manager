@@ -1,13 +1,17 @@
-from flask import (
-    Flask, render_template, request, redirect,
-    url_for, session, flash, send_file
-)
-import json, os, io
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+import json, os
 from datetime import datetime
-import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
+
+# ─── FILES ──────────────────────────────────────────────────────────────
+USERS_FILE    = 'users.json'
+BUDGETS_FILE  = 'budgets.json'
+ENTRIES_FILE  = 'entries.json'    # ← Here
+
+# (no more separate INCOME_LOG_FILE or EXPENSE_LOG_FILE)
+
 
 # ─── FILES ──────────────────────────────────────────────────────────────
 USERS_FILE        = 'users.json'
