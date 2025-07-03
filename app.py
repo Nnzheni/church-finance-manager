@@ -247,39 +247,35 @@ def manage_budgets():
 
 @app.route('/report')
 def report():
-    # grab filters from querystring
+    # grab any filters from query-string
     dept_f = request.args.get('department', '')
     frm    = request.args.get('from_date', '')
     to     = request.args.get('to_date', '')
 
-    # load and tag entries
-    incomes  = load_json(INCOME_LOG_FILE)  or []
-    expenses = load_json(EXPENSE_LOG_FILE) or []
-    for i in incomes:
-        i['type']        = 'Income'
-        i['description'] = i.get('description', i.get('category', i.get('note', '')))
-    for e in expenses:
-        e['type']        = 'Expense'
-        e['description'] = e.get('description', e.get('category', e.get('note', '')))
+    # load everything from the one unified file
+    entries = load_json(ENTRIES_FILE, default=list)
 
-    # merge & filter
-    combined = incomes + expenses
-    def passes(r):
-        if dept_f and dept_f.lower() not in r['department'].lower(): return False
-        if frm   and r['date']        < frm: return False
-        if to    and r['date']        > to:  return False
+    # apply filter logic
+    def include(e):
+        if dept_f and e['department'] != dept_f:
+            return False
+        if frm   and e['date'] < frm:
+            return False
+        if to    and e['date'] > to:
+            return False
         return True
 
-    data = [r for r in combined if passes(r)]
-    data.sort(key=lambda r: r['date'], reverse=True)
+    rows = [e for e in entries if include(e)]
+    rows.sort(key=lambda e: e['date'], reverse=True)
 
     return render_template(
       'report.html',
-      data=data,
+      data=rows,
       department_filter=dept_f,
       from_date=frm,
       to_date=to
     )
+
 
 
 @app.route('/export-excel')
