@@ -1,6 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-import json, os
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
+import json
+import os
+import io
 from datetime import datetime
+
+import pandas as pd                # ← this line must be present
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
