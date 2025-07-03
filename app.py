@@ -123,7 +123,7 @@ def add_income():
     role = session['role']
     dept = session['department']
 
-    # Finance Manager chooses account; everyone else is stuck in their own dept
+    # Finance Manager chooses account; everyone else stuck in their dept
     if role == 'Finance Manager':
         valid_accounts = ['Main', 'Building Fund']
     elif role == 'Senior Pastor':
@@ -141,7 +141,7 @@ def add_income():
         else:
             account = dept
 
-        subtype     = request.form['type']          # the “Type” field
+        subtype     = request.form['type']
         description = request.form.get('description', '')
         date        = request.form['date']
         amount      = float(request.form['amount'])
@@ -163,13 +163,14 @@ def add_income():
         flash('Income saved', 'success')
         return redirect(url_for('dashboard'))
 
-    # GET → show the form
+    # on GET, show the form
     return render_template(
         'add_income.html',
         valid_accounts=valid_accounts,
         role=role,
         now=datetime.now()
     )
+
 
 
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
