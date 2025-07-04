@@ -5,3 +5,4 @@ numpy==1.24.3
 xlsxwriter
 gspread
 oauth2client
+Flask-SQLAlchemy>=3.0
