@@ -79,22 +79,38 @@
     </div>
 
     <!-- Action Buttons -->
-    {% if role=='Finance Manager' %}
-    <div class="d-flex flex-wrap gap-2 mb-4">
-      <a href="{{ url_for('add_income') }}" class="btn btn-success">
-        <i class="bi bi-plus-circle"></i> Add Income
-      </a>
-      <a href="{{ url_for('add_expense') }}" class="btn btn-danger">
-        <i class="bi bi-dash-circle"></i> Add Expense
-      </a>
-      <a href="{{ url_for('report') }}" class="btn btn-info text-white">
-        <i class="bi bi-file-earmark-text"></i> View Report
-      </a>
-      <a href="{{ url_for('manage_budgets') }}" class="btn btn-warning">
-        <i class="bi bi-currency-dollar"></i> Manage Budgets
-      </a>
-    </div>
-    {% endif %}
+    <!-- Finance Manager gets full controls -->
+{% if role == 'Finance Manager' %}
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    <a href="{{ url_for('add_income') }}" class="btn btn-success">
+      <i class="bi bi-plus-circle"></i> Add Income
+    </a>
+    <a href="{{ url_for('add_expense') }}" class="btn btn-danger">
+      <i class="bi bi-dash-circle"></i> Add Expense
+    </a>
+    <a href="{{ url_for('report') }}" class="btn btn-info text-white">
+      <i class="bi bi-file-earmark-text"></i> View Report
+    </a>
+    <a href="{{ url_for('manage_budgets') }}" class="btn btn-warning">
+      <i class="bi bi-currency-ZAR"></i> Manage Budgets
+    </a>
+  </div>
+
+<!-- Department treasurers get only “Add” and “Report” -->
+{% elif role != 'Senior Pastor' %}
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    <a href="{{ url_for('add_income') }}" class="btn btn-success">
+      <i class="bi bi-plus-circle"></i> Add Income
+    </a>
+    <a href="{{ url_for('add_expense') }}" class="btn btn-danger">
+      <i class="bi bi-dash-circle"></i> Add Expense
+    </a>
+    <a href="{{ url_for('report') }}" class="btn btn-info text-white">
+      <i class="bi bi-file-earmark-text"></i> View Report
+    </a>
+  </div>
+{% endif %}
+
 
     <!-- Cards (mobile stack in order: 1=Overview, 2=Budget, 3=Chart) -->
     <div class="row gy-4">
