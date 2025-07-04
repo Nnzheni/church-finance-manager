@@ -1,23 +1,26 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
-from flask_sqlalchemy import SQLAlchemy
+import os
+import json
+import io
 from datetime import datetime
-import os, io
 import pandas as pd
+# (and if you’re using SQLAlchemy)
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY","dev")
+app.secret_key = os.environ.get("SECRET_KEY", "dev")
 
-# point SQLAlchemy at a local file called data.db
-app.config["SQLALCHEMY_DATABASE_URI"]   = "sqlite:///data.db"
+# (Optional) SQLAlchemy setup if you ever move to a DB:
+app.config["SQLALCHEMY_DATABASE_URI"]        = "sqlite:///data.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
 db = SQLAlchemy(app)
+
 # ─── DATA FILE PATHS ───────────────────────────────────────────
-USERS_FILE      = 'users.json'
-INCOME_LOG_FILE = 'income_log.json'
-EXPENSE_LOG_FILE= 'expense_log.json'
-BUDGETS_FILE    = 'budgets.json'
-ENTRIES_FILE    = 'entries.json'
+USERS_FILE       = 'users.json'
+INCOME_LOG_FILE  = 'income_log.json'
+EXPENSE_LOG_FILE = 'expense_log.json'
+BUDGETS_FILE     = 'budgets.json'
+ENTRIES_FILE     = 'entries.json'
 
 # ─── FILES ──────────────────────────────────────────────────────────────
 class Entry(db.Model):
