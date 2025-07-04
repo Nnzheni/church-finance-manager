@@ -12,6 +12,12 @@ app.config["SQLALCHEMY_DATABASE_URI"]   = "sqlite:///data.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+# ─── DATA FILE PATHS ───────────────────────────────────────────
+USERS_FILE      = 'users.json'
+INCOME_LOG_FILE = 'income_log.json'
+EXPENSE_LOG_FILE= 'expense_log.json'
+BUDGETS_FILE    = 'budgets.json'
+ENTRIES_FILE    = 'entries.json'
 
 # ─── FILES ──────────────────────────────────────────────────────────────
 class Entry(db.Model):
