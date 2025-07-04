@@ -1,19 +1,18 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
-import json
-import os
-import io
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-
-import pandas as pd                # ← this line must be present
-
+import os, io
+import pandas as pd
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
-ENTRIES_FILE = 'entries.json'   # your unified income+expense store
+app.secret_key = os.environ.get("SECRET_KEY","dev")
 
-def load_json(path, default):
-    # … your existing load_json implementation …
-    pass
+# point SQLAlchemy at a local file called data.db
+app.config["SQLALCHEMY_DATABASE_URI"]   = "sqlite:///data.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+
 # ─── FILES ──────────────────────────────────────────────────────────────
 USERS_FILE    = 'users.json'
 BUDGETS_FILE  = 'budgets.json'
