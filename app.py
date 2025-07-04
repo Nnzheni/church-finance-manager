@@ -241,7 +241,7 @@ def add_expense():
         return redirect(url_for('dashboard'))
 
     return render_template(
-        'add_income.html',
+        'add_expense.html',
         valid_accounts=valid_accounts,
         role=role,
         now=datetime.now()
