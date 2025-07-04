@@ -197,7 +197,7 @@ def add_income():
 
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
 @app.route('/add-expense', methods=['GET','POST'])
-def add_income():
+def add_expense():
     if 'user' not in session:
         return redirect(url_for('login'))
     role = session['role']
