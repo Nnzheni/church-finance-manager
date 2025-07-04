@@ -14,19 +14,21 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 # ─── FILES ──────────────────────────────────────────────────────────────
-USERS_FILE    = 'users.json'
-BUDGETS_FILE  = 'budgets.json'
-ENTRIES_FILE  = 'entries.json'    # ← Here
+class Entry(db.Model):
+    __tablename__ = "entries"
+    id         = db.Column(db.Integer, primary_key=True)
+    kind       = db.Column(db.String(10), nullable=False)    # “Income” or “Expense”
+    subtype    = db.Column(db.String(50), nullable=False)    # your “type” field
+    account    = db.Column(db.String(50), nullable=False)    # Main, Building Fund, or dept
+    department = db.Column(db.String(50), nullable=False)
+    description= db.Column(db.String(200), default="")
+    date       = db.Column(db.Date, nullable=False)
+    amount     = db.Column(db.Float, nullable=False)
 
-# (no more separate INCOME_LOG_FILE or EXPENSE_LOG_FILE)
+# create the table if it doesn't exist (on first run)
+with app.app_context():
+    db.create_all()
 
-
-# ─── FILES ──────────────────────────────────────────────────────────────
-USERS_FILE        = 'users.json'
-INCOME_LOG_FILE   = 'income_log.json'
-EXPENSE_LOG_FILE  = 'expense_log.json'
-BUDGETS_FILE      = 'budgets.json'
-ENTRIES_FILE      = 'entries.json'    # unified income+expense store
 
 # ─── UTILITIES ──────────────────────────────────────────────────────────
 def load_json(path, default=None):
@@ -75,55 +77,79 @@ def dashboard():
     dept = session['dept']
     now  = datetime.now()
 
-    # filters
+    # — Filters from querystring —
     acct = request.args.get('account', 'Main')
     m    = int(request.args.get('month', now.month))
     y    = int(request.args.get('year',  now.year))
 
-    # load data
+    # — Load data —
     entries = load_json(ENTRIES_FILE, default=list)
     budgets = load_json(BUDGETS_FILE, default=dict)
 
-    # filter entries by auth/filters
-    def keep(e):
-        if role=='Finance Manager':
-            if acct not in ('Main','Building Fund'): return False
-            if e['account'] != acct:               return False
-        elif role!='Senior Pastor':
-            if e['account'] != dept:                return False
-        # Senior Pastor sees all
-        d = parse_date(e['date'])
-        return d.year==y and d.month==m
+    # — Keep only the entries this user should see this month —
+    def keep(entry):
+        # Finance Manager may choose Main/Building Fund
+        if role == 'Finance Manager':
+            if acct not in ('Main', 'Building Fund'):
+                return False
+            if entry['account'] != acct:
+                return False
+
+        # Departmental treasurers only see their own dept
+        elif role != 'Senior Pastor':
+            if entry['account'] != dept:
+                return False
+
+        # Senior Pastor sees all accounts
+
+        # Then filter by year/month
+        d = parse_date(entry['date'])
+        return (d.year == y and d.month == m)
 
     month_entries = [e for e in entries if keep(e)]
 
-    total_inc = sum(e['amount'] for e in month_entries if e['type']=='Income')
-    total_exp = sum(e['amount'] for e in month_entries if e['type']=='Expense')
-    balance   = total_inc - total_exp
-    limit     = budgets.get(acct if role=='Finance Manager' else dept, 0.0)
-    remaining = limit - total_exp
+    # — Totals —
+    total_income  = sum(e['amount'] for e in month_entries if e['type'] == 'Income')
+    total_expense = sum(e['amount'] for e in month_entries if e['type'] == 'Expense')
+    balance       = total_income - total_expense
 
-    # chart data for the year
-    labels     = [f"{y}-{mn:02d}" for mn in range(1,13)]
-    def sum_for(lbl, t):
-        return sum(e['amount'] for e in entries
-                   if e['type']==t
-                   and (role=='Senior Pastor'
-                        or e['account']==(acct if role=='Finance Manager' else dept))
-                   and e['date'].startswith(lbl))
-    chart_inc = [sum_for(lbl,'Income')  for lbl in labels]
-    chart_exp = [sum_for(lbl,'Expense') for lbl in labels]
+    # Budget for this account/dept
+    key = acct if role == 'Finance Manager' else dept
+    budget_limit = budgets.get(key, 0.0)
+    remaining    = budget_limit - total_expense
 
-    return render_template('dashboard.html',
-        user=user, role=role, dept=dept,
-        now=now, selected_month=m, selected_year=y,
-        current_year=now.year, account=acct,
-        total_income=total_inc, total_expense=total_exp,
-        balance=balance, budget_limit=limit,
+    # — Chart data for the full year —
+    labels    = [f"{y}-{mn:02d}" for mn in range(1, 13)]
+    def sum_for(label, t):
+        return sum(
+            e['amount']
+            for e in entries
+            if e['type'] == t
+            and (role == 'Senior Pastor' or e['account'] == key)
+            and e['date'].startswith(label)
+        )
+
+    chart_income  = [sum_for(lbl, 'Income')  for lbl in labels]
+    chart_expense = [sum_for(lbl, 'Expense') for lbl in labels]
+
+    return render_template(
+        'dashboard.html',
+        user=user,
+        role=role,
+        dept=dept,
+        now=now,
+        selected_month=m,
+        selected_year=y,
+        current_year=now.year,
+        account=acct,
+        total_income=total_income,
+        total_expense=total_expense,
+        balance=balance,
+        budget_limit=budget_limit,
         remaining=remaining,
         chart_labels=labels,
-        chart_income=chart_inc,
-        chart_expense=chart_exp
+        chart_income=chart_income,
+        chart_expense=chart_expense,
     )
 
 # ─── ADD INCOME ────────────────────────────────────────────────────────────
@@ -131,48 +157,37 @@ def dashboard():
 def add_income():
     if 'user' not in session:
         return redirect(url_for('login'))
-
     role = session['role']
     dept = session['dept']
 
-    # Finance Manager may pick Main/Building; everyone else is locked to their own dept
-    if role == 'Finance Manager':
-        valid_accounts = ['Main', 'Building Fund']
-    elif role == 'Senior Pastor':
-        valid_accounts = []            # view-only
+    # Finance Manager picks, others use their dept only
+    if role=='Finance Manager':
+        valid_accounts = ['Main','Building Fund']
     else:
         valid_accounts = [dept]
 
-    if request.method == 'POST':
-        # pick or validate account
-        if role == 'Finance Manager':
-            account = request.form['account']
-            if account not in valid_accounts:
-                flash('Account not permitted', 'danger')
-                return redirect(url_for('add_income'))
-        else:
-            account = dept
+    if request.method=='POST':
+        account = (request.form['account']
+                   if role=='Finance Manager'
+                   else dept)
+        if account not in valid_accounts:
+            flash("Account not permitted","danger")
+            return redirect(url_for('dashboard'))
 
-        # build the entry
-        entry = {
-            'type':        'Income',
-            'subtype':     request.form.get('type', '').strip(),
-            'account':     account,
-            'department':  dept,
-            'description': request.form.get('description','').strip(),
-            'date':        request.form['date'],
-            'amount':      float(request.form['amount'])
-        }
-
-        # append to unified entries.json
-        entries = load_json(ENTRIES_FILE, default=list)
-        entries.append(entry)
-        save_json(ENTRIES_FILE, entries)
-
-        flash('Income saved', 'success')
+        entry = Entry(
+            kind       = "Income",
+            subtype    = request.form['type'],
+            account    = account,
+            department = dept,
+            description= request.form.get('description',''),
+            date       = datetime.strptime(request.form['date'], "%Y-%m-%d"),
+            amount     = float(request.form['amount'])
+        )
+        db.session.add(entry)
+        db.session.commit()
+        flash("Income saved","success")
         return redirect(url_for('dashboard'))
 
-    # GET → render form
     return render_template(
         'add_income.html',
         valid_accounts=valid_accounts,
@@ -182,52 +197,47 @@ def add_income():
 
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
 @app.route('/add-expense', methods=['GET','POST'])
-def add_expense():
+def add_income():
     if 'user' not in session:
         return redirect(url_for('login'))
-
     role = session['role']
     dept = session['dept']
 
-    if role == 'Finance Manager':
-        valid_accounts = ['Main', 'Building Fund']
-    elif role == 'Senior Pastor':
-        valid_accounts = []
+    # Finance Manager picks, others use their dept only
+    if role=='Finance Manager':
+        valid_accounts = ['Main','Building Fund']
     else:
         valid_accounts = [dept]
 
-    if request.method == 'POST':
-        if role == 'Finance Manager':
-            account = request.form['account']
-            if account not in valid_accounts:
-                flash('Account not permitted', 'danger')
-                return redirect(url_for('add_expense'))
-        else:
-            account = dept
+    if request.method=='POST':
+        account = (request.form['account']
+                   if role=='Finance Manager'
+                   else dept)
+        if account not in valid_accounts:
+            flash("Account not permitted","danger")
+            return redirect(url_for('dashboard'))
 
-        entry = {
-            'type':        'Expense',
-            'subtype':     request.form.get('type', '').strip(),
-            'account':     account,
-            'department':  dept,
-            'description': request.form.get('description','').strip(),
-            'date':        request.form['date'],
-            'amount':      float(request.form['amount'])
-        }
-
-        entries = load_json(ENTRIES_FILE, default=list)
-        entries.append(entry)
-        save_json(ENTRIES_FILE, entries)
-
-        flash('Expense saved', 'success')
+        entry = Entry(
+            kind       = "expense",
+            subtype    = request.form['type'],
+            account    = account,
+            department = dept,
+            description= request.form.get('description',''),
+            date       = datetime.strptime(request.form['date'], "%Y-%m-%d"),
+            amount     = float(request.form['amount'])
+        )
+        db.session.add(entry)
+        db.session.commit()
+        flash("expense saved","success")
         return redirect(url_for('dashboard'))
 
     return render_template(
-        'add_expense.html',
+        'add_income.html',
         valid_accounts=valid_accounts,
         role=role,
         now=datetime.now()
     )
+
 
 # ─── BUDGET MANAGEMENT ───────────────────────────────────────────────────
 @app.route('/budgets', methods=['GET','POST'])
