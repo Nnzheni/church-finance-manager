@@ -3,13 +3,21 @@
 <head>
   <meta charset="utf-8">
   <title>Dashboard – AFM-RCA Finance</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>.bg-brand{background:#064;}.card{border-radius:.7rem;}</style>
+  <style>
+    body { background:#f4f6f9; }
+    .bg-brand { background:#003b52; }
+    .card { border-radius:.7rem; }
+    .small-muted { font-size:.85rem; color:#6c757d; }
+    .table-sm td, .table-sm th { vertical-align: middle; }
+    .budget-negative { color: #c82333; font-weight: 600; } /* red */
+    .budget-positive { color: #198754; font-weight: 600; } /* green */
+  </style>
 </head>
-<body class="bg-light">
-<nav class="navbar navbar-expand-lg navbar-dark" style="background:#003b52">
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-brand">
   <div class="container">
     <a class="navbar-brand" href="{{ url_for('dashboard') }}">AFM-RCA Financial Management System</a>
     <div class="ms-auto text-light">{{ dept }} | {{ role }} &nbsp; <a class="btn btn-light btn-sm" href="{{ url_for('logout') }}">Logout</a></div>
@@ -17,119 +25,162 @@
 </nav>
 
 <div class="container my-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
     <div>
-      <h3>Welcome, {{ user }} 👋</h3>
-      <small class="text-muted">Summary for {{ now.strftime('%B %Y') }}</small>
+      <h3 class="mb-0">Welcome, {{ user }} 👋</h3>
+      <div class="small-muted">Summary for {{ now.strftime('%B %Y') }}</div>
     </div>
-    <div>
-      <form method="get" class="d-flex gap-2">
-        <select name="account" class="form-select form-select-sm">
-          <option value="Main" {% if account=='Main' %}selected{% endif %}>Main</option>
-          <option value="Building Fund" {% if account=='Building Fund' %}selected{% endif %}>Building Fund</option>
-        </select>
-        <select name="month" class="form-select form-select-sm">
-          {% for m in range(1,13) %}<option value="{{ m }}" {% if m==selected_month %}selected{% endif %}>{{ m }}</option>{% endfor %}
-        </select>
-        <select name="year" class="form-select form-select-sm">
-          {% for y in range(current_year-2,current_year+1) %}<option value="{{ y }}" {% if y==selected_year %}selected{% endif %}>{{ y }}</option>{% endfor %}
-        </select>
-        <button class="btn btn-primary btn-sm">Apply Filters</button>
-      </form>
-    </div>
+
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <select name="account" class="form-select form-select-sm">
+        <option value="Main" {% if account=='Main' %}selected{% endif %}>Main</option>
+        <option value="Building Fund" {% if account=='Building Fund' %}selected{% endif %}>Building Fund</option>
+      </select>
+      <select name="month" class="form-select form-select-sm">
+        {% for m in range(1,13) %}<option value="{{ m }}" {% if m==selected_month %}selected{% endif %}>{{ m }}</option>{% endfor %}
+      </select>
+      <select name="year" class="form-select form-select-sm">
+        {% for y in range(current_year-2,current_year+1) %}<option value="{{ y }}" {% if y==selected_year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-primary btn-sm">Apply Filters</button>
+    </form>
   </div>
 
   {% for category,msg in get_flashed_messages(with_categories=true) %}
     <div class="alert alert-{{ category }}">{{ msg }}</div>
   {% endfor %}
 
-  <!-- actions -->
+  <!-- Actions -->
   <div class="mb-3 d-flex gap-2 flex-wrap">
     {% if role == 'Finance Manager' %}
-      <a href="{{ url_for('add_income') }}" class="btn btn-success">Add Income</a>
-      <a href="{{ url_for('add_expense') }}" class="btn btn-danger">Add Expense</a>
-      <a href="{{ url_for('report') }}" class="btn btn-info text-white">View Report</a>
-      <a href="{{ url_for('manage_budgets') }}" class="btn btn-warning">Manage Budgets</a>
+      <a class="btn btn-success" href="{{ url_for('add_income') }}">Add Income</a>
+      <a class="btn btn-danger" href="{{ url_for('add_expense') }}">Add Expense</a>
+      <a class="btn btn-info text-white" href="{{ url_for('report') }}">View Report</a>
+      <a class="btn btn-warning" href="{{ url_for('manage_budgets') }}">Manage Budgets</a>
     {% elif role != 'Senior Pastor' %}
-      <a href="{{ url_for('add_income') }}" class="btn btn-success">Add Income</a>
-      <a href="{{ url_for('add_expense') }}" class="btn btn-danger">Add Expense</a>
-      <a href="{{ url_for('report') }}" class="btn btn-info text-white">View Report</a>
+      <a class="btn btn-success" href="{{ url_for('add_income') }}">Add Income</a>
+      <a class="btn btn-danger" href="{{ url_for('add_expense') }}">Add Expense</a>
+      <a class="btn btn-info text-white" href="{{ url_for('report') }}">View Report</a>
     {% else %}
-      <a href="{{ url_for('report') }}" class="btn btn-info text-white">View Report</a>
+      <a class="btn btn-info text-white" href="{{ url_for('report') }}">View Report</a>
     {% endif %}
   </div>
 
+  <!-- Top row: Overview | Monthly Summary | Chart -->
   <div class="row gy-4">
     <div class="col-12 col-md-4">
       <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">Overview</div>
-        <div class="card-body">You are logged in as <strong>{{ user }}</strong>.</div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-4">
-      <div class="card shadow-sm">
-        <div class="card-header bg-warning text-dark">Monthly Budget</div>
         <div class="card-body">
-          <p><strong>Total Income:</strong> R{{ '%.2f'|format(total_income) }}</p>
-          <p><strong>Total Expenses:</strong> R{{ '%.2f'|format(total_expense) }}</p>
-
-          {% set b = budgets.get(account if role=='Finance Manager' else dept) if budgets is defined else None %}
-          {% if b is mapping %}
-            {% set total = b.get('total') if 'total' in b else ( (b.get('items') and b.get('items')|sum(attribute='1')) if b.get('items') else None) %}
-            <p><strong>Limit:</strong> R{{ '%.2f'|format(total if total is not none else budget_limit) }}</p>
-
-            {% if b.get('items') %}
-              <hr/>
-              <h6>Budget items</h6>
-              <div class="table-responsive">
-                <table class="table table-sm">
-                  <thead><tr><th>Item</th><th class="text-end">Budget (R)</th></tr></thead>
-                  <tbody>
-                    {% for item_name, item_amount in b.get('items',{}).items() %}
-                      <tr><td>{{ item_name }}</td><td class="text-end">R{{ '%.2f'|format(item_amount) }}</td></tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            {% endif %}
-          {% else %}
-            <p><strong>Limit:</strong> R{{ '%.2f'|format(budget_limit) }}</p>
-          {% endif %}
-
-          <p><strong>Remaining:</strong>
-            <span class="{% if remaining < 0 %}text-danger{% else %}text-success{% endif %}">
-              R{{ '%.2f'|format(remaining) }}
-            </span>
-          </p>
+          You are logged in as <strong>{{ user }}</strong>.
+          <div class="small-muted mt-2">Department: {{ dept }}</div>
         </div>
       </div>
     </div>
 
+    <!-- Monthly Summary: Total Income + Budgeted Income -->
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">Monthly Summary</div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div><strong>Total Income:</strong></div>
+            <div>R{{ '%.2f'|format(total_income) }}</div>
+          </div>
+          {% set account_budget = budgets.get(account if role=='Finance Manager' else dept, {}) if budgets is defined else {} %}
+          {% set budgeted_income = 0 %}
+          {% if account_budget and account_budget.get('items') %}
+            {% set budgeted_income = account_budget.get('items').get('Budgeted Income', 0) %}
+          {% endif %}
+          <div class="d-flex justify-content-between mt-2">
+            <div><strong>Budgeted Income:</strong></div>
+            <div>R{{ '%.2f'|format(budgeted_income) }}</div>
+          </div>
+
+          <hr/>
+
+          <div class="d-flex justify-content-between">
+            <div><strong>Total Expenses:</strong></div>
+            <div>R{{ '%.2f'|format(total_expense) }}</div>
+          </div>
+          <div class="d-flex justify-content-between mt-2">
+            <div><strong>Budget Limit:</strong></div>
+            <div>R{{ '%.2f'|format(budget_limit) }}</div>
+          </div>
+          <div class="d-flex justify-content-between mt-2">
+            <div><strong>Remaining:</strong></div>
+            <div class="{% if remaining < 0 %}budget-negative{% else %}budget-positive{% endif %}">
+              R{{ '%.2f'|format(remaining) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart -->
     <div class="col-12 col-md-4">
       <div class="card shadow-sm">
         <div class="card-header bg-info text-white">Income vs Expense</div>
         <div class="card-body">
-          <canvas id="chart" height="170"></canvas>
+          <canvas id="incomeExpenseChart" height="180"></canvas>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Budget Items card separated under the top row -->
+  <div class="row gy-4 mt-2">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light"><strong>Budget items</strong></div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm table-striped">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th class="text-end">Budget (R)</th>
+                  <th class="text-end">Spent (R)</th>
+                  <th class="text-end">Remaining (R)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in item_rows %}
+                <tr>
+                  <td>{{ r.name }}</td>
+                  <td class="text-end">R{{ '%.2f'|format(r.budgeted) }}</td>
+                  <td class="text-end">R{{ '%.2f'|format(r.spent) }}</td>
+                  <td class="text-end {% if r.remaining < 0 %}budget-negative{% else %}budget-positive{% endif %}">
+                    R{{ '%.2f'|format(r.remaining) }}
+                  </td>
+                </tr>
+                {% endfor %}
+                {% if item_rows|length == 0 %}
+                <tr><td colspan="4" class="text-center small-muted">No budget items defined for this account.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-new Chart(document.getElementById('chart'), {
-  type: 'bar',
-  data: {
-    labels: {{ chart_labels|tojson }},
-    datasets: [
-      { label: 'Income', data: {{ chart_income|tojson }}, backgroundColor: 'rgba(40,167,69,0.7)'},
-      { label: 'Expense', data: {{ chart_expense|tojson }}, backgroundColor: 'rgba(220,53,69,0.7)'}
-    ]
-  },
-  options: { responsive: true, maintainAspectRatio: false }
-});
+  new Chart(document.getElementById('incomeExpenseChart'), {
+    type: 'bar',
+    data: {
+      labels: {{ chart_labels|tojson }},
+      datasets: [
+        { label: 'Income', data: {{ chart_income|tojson }}, backgroundColor: 'rgba(40,167,69,0.7)'},
+        { label: 'Expense', data: {{ chart_expense|tojson }}, backgroundColor: 'rgba(220,53,69,0.7)'}
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
 </script>
 </body>
 </html>
