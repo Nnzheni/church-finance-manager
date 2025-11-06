@@ -1,9 +1,13 @@
-# app.py — Cleaned & consistent version
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 import os, json, io
 from datetime import datetime
 import pandas as pd
-# ─── Utilities ─────────────────────────────────────────────────────────────
+
+# ✅ 1. Create the Flask app FIRST
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
+
+# ✅ 2. THEN add the utilities + debug route
 ENTRIES_FILE = 'entries.json'
 BUDGETS_FILE = 'budgets.json'
 USERS_FILE   = 'users.json'
@@ -21,14 +25,10 @@ def save_json(path, data):
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-# Debug route (use only for testing)
 @app.route('/debug-entries')
 def debug_entries():
     entries = load_json(ENTRIES_FILE, default=list)
     return {"count": len(entries), "entries": entries}
-
-app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
 
 # ─── DATA FILES ─────────────────────────────────────────────────────────────
 USERS_FILE   = 'users.json'    # { "admin": {"password":"x","role":"Finance Manager","department":"Main"} }
