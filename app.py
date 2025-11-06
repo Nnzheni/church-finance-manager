@@ -144,33 +144,57 @@ def dashboard():
 def add_income():
     if 'user' not in session:
         return redirect(url_for('login'))
-    role = session.get('role', '')
-    dept = session.get('dept', '')
-    valid_accounts = ['Main', 'Building Fund'] if role == 'Finance Manager' else ([] if role == 'Senior Pastor' else [dept])
+
+    role = session.get('role')
+    dept = session.get('dept')  # template supplies dept in hidden input for non-FM users
+
+    # allowed accounts for Finance Manager, others default to their dept, senior pastor view-only
+    if role == 'Finance Manager':
+        valid_accounts = ['Main', 'Building Fund']
+    elif role == 'Senior Pastor':
+        valid_accounts = []   # Senior Pastor should not POST
+    else:
+        valid_accounts = [dept]
 
     if request.method == 'POST':
-        account = request.form.get('account') if role == 'Finance Manager' else dept
-        if account not in valid_accounts:
-            flash("Account not permitted", "danger")
+        try:
+            # determine account
+            account = request.form.get('account', dept)
+            if role == 'Finance Manager' and account not in valid_accounts:
+                flash('Account not permitted', 'danger')
+                return redirect(url_for('dashboard'))
+            if role == 'Senior Pastor':
+                flash('Senior Pastor is view-only', 'danger')
+                return redirect(url_for('dashboard'))
+
+            amount = float(request.form['amount'])
+            subtype = request.form.get('type', '').strip()
+            description = request.form.get('description', '').strip()
+            date = request.form['date']
+
+            entry = {
+                'type': 'Income',
+                'subtype': subtype,
+                'account': account,
+                'department': dept,
+                'description': description,
+                'date': date,
+                'amount': amount
+            }
+
+            entries = load_json(ENTRIES_FILE, default=list)
+            entries.append(entry)
+            save_json(ENTRIES_FILE, entries)
+
+            flash('Income saved', 'success')
             return redirect(url_for('dashboard'))
+        except Exception as exc:
+            # helpful error message in logs and flash to UI
+            app.logger.exception("Failed saving income")
+            flash(f"Failed to save income: {str(exc)}", "danger")
+            return redirect(url_for('add_income'))
 
-        # build entry
-        entry = {
-            'type': 'Income',
-            'subtype': request.form.get('type', '').strip(),
-            'account': account,
-            'department': dept,
-            'description': request.form.get('description', '').strip(),
-            'date': request.form.get('date', datetime.now().strftime('%Y-%m-%d')),
-            'amount': float(request.form.get('amount', 0) or 0)
-        }
-
-        entries = load_json(ENTRIES_FILE, default=list) or []
-        entries.append(entry)
-        save_json(ENTRIES_FILE, entries)
-        flash("Income saved", "success")
-        return redirect(url_for('dashboard'))
-
+    # GET -> render form
     return render_template('add_income.html', valid_accounts=valid_accounts, role=role, now=datetime.now())
 
 # ─── ADD EXPENSE ───────────────────────────────────────────────────────────
@@ -178,31 +202,52 @@ def add_income():
 def add_expense():
     if 'user' not in session:
         return redirect(url_for('login'))
-    role = session.get('role', '')
-    dept = session.get('dept', '')
-    valid_accounts = ['Main', 'Building Fund'] if role == 'Finance Manager' else ([] if role == 'Senior Pastor' else [dept])
+
+    role = session.get('role')
+    dept = session.get('dept')
+
+    if role == 'Finance Manager':
+        valid_accounts = ['Main', 'Building Fund']
+    elif role == 'Senior Pastor':
+        valid_accounts = []
+    else:
+        valid_accounts = [dept]
 
     if request.method == 'POST':
-        account = request.form.get('account') if role == 'Finance Manager' else dept
-        if account not in valid_accounts:
-            flash("Account not permitted", "danger")
+        try:
+            account = request.form.get('account', dept)
+            if role == 'Finance Manager' and account not in valid_accounts:
+                flash('Account not permitted', 'danger')
+                return redirect(url_for('dashboard'))
+            if role == 'Senior Pastor':
+                flash('Senior Pastor is view-only', 'danger')
+                return redirect(url_for('dashboard'))
+
+            amount = float(request.form['amount'])
+            subtype = request.form.get('type', '').strip()
+            description = request.form.get('description', '').strip()
+            date = request.form['date']
+
+            entry = {
+                'type': 'Expense',
+                'subtype': subtype,
+                'account': account,
+                'department': dept,
+                'description': description,
+                'date': date,
+                'amount': amount
+            }
+
+            entries = load_json(ENTRIES_FILE, default=list)
+            entries.append(entry)
+            save_json(ENTRIES_FILE, entries)
+
+            flash('Expense saved', 'success')
             return redirect(url_for('dashboard'))
-
-        entry = {
-            'type': 'Expense',
-            'subtype': request.form.get('type', '').strip(),
-            'account': account,
-            'department': dept,
-            'description': request.form.get('description', '').strip(),
-            'date': request.form.get('date', datetime.now().strftime('%Y-%m-%d')),
-            'amount': float(request.form.get('amount', 0) or 0)
-        }
-
-        entries = load_json(ENTRIES_FILE, default=list) or []
-        entries.append(entry)
-        save_json(ENTRIES_FILE, entries)
-        flash("Expense saved", "success")
-        return redirect(url_for('dashboard'))
+        except Exception as exc:
+            app.logger.exception("Failed saving expense")
+            flash(f"Failed to save expense: {str(exc)}", "danger")
+            return redirect(url_for('add_expense'))
 
     return render_template('add_expense.html', valid_accounts=valid_accounts, role=role, now=datetime.now())
 
