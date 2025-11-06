@@ -4,25 +4,65 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<div class="container mt-5" style="max-width:600px;">
+<div class="container mt-5" style="max-width:700px;">
   <h3 class="mb-4">Add Expense</h3>
   <form method="POST" action="{{ url_for('add_expense') }}">
     {% for cat,msg in get_flashed_messages(with_categories=true) %}
       <div class="alert alert-{{ cat }}">{{ msg }}</div>
     {% endfor %}
-    {% if role=='Finance Manager' %}
+
+    {% if role == 'Finance Manager' %}
     <div class="mb-3">
       <label class="form-label">Account</label>
       <select name="account" class="form-select">
-        {% for a in valid_accounts %}<option value="{{ a }}">{{ a }}</option>{% endfor %}
+        {% for a in valid_accounts %}
+          <option value="{{ a }}" {% if a==account_for_form %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
       </select>
     </div>
     {% endif %}
-    <div class="mb-3"><label class="form-label">Amount (R)</label><input name="amount" type="number" step="0.01" class="form-control" required></div>
-    <div class="mb-3"><label>Type</label><input name="type" class="form-control" placeholder="e.g. Electricity"></div>
-    <div class="mb-3"><label>Description</label><input name="description" class="form-control"></div>
-    <div class="mb-3"><label>Date</label><input name="date" type="date" value="{{ now.strftime('%Y-%m-%d') }}" class="form-control" required></div>
-    <div class="d-flex gap-2"><button class="btn btn-danger">Save</button><a class="btn btn-secondary" href="{{ url_for('dashboard') }}">Cancel</a></div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Amount (R)</label>
+        <input name="amount" type="number" step="0.01" class="form-control" required>
+      </div>
+
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Budget Item</label>
+        {% if budget_items %}
+          <select name="budget_item" class="form-select">
+            <option value="">-- Select budget item (optional) --</option>
+            {% for b in budget_items %}
+              <option value="{{ b }}">{{ b }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Choose a budget item to attribute this expense. This will reduce that item's remaining amount automatically.</div>
+        {% else %}
+          <input name="budget_item" class="form-control" placeholder="No budget items defined for this account">
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Type</label>
+      <input name="type" class="form-control" placeholder="e.g. Salaries, Electricity">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Description (optional)</label>
+      <input name="description" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Date</label>
+      <input name="date" type="date" class="form-control" value="{{ now.strftime('%Y-%m-%d') }}" required>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button class="btn btn-danger">Save Expense</button>
+      <a class="btn btn-secondary" href="{{ url_for('dashboard') }}">Cancel</a>
+    </div>
   </form>
 </div>
 </body>
