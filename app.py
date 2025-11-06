@@ -3,6 +3,29 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import os, json, io
 from datetime import datetime
 import pandas as pd
+# ─── Utilities ─────────────────────────────────────────────────────────────
+ENTRIES_FILE = 'entries.json'
+BUDGETS_FILE = 'budgets.json'
+USERS_FILE   = 'users.json'
+
+def load_json(path, default=None):
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return default() if callable(default) else (default if default is not None else [])
+
+def save_json(path, data):
+    d = os.path.dirname(path)
+    if d and not os.path.exists(d):
+        os.makedirs(d, exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+# Debug route (use only for testing)
+@app.route('/debug-entries')
+def debug_entries():
+    entries = load_json(ENTRIES_FILE, default=list)
+    return {"count": len(entries), "entries": entries}
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
