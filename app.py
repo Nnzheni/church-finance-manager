@@ -69,7 +69,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# ─── DASHBOARD ─────────────────────────────────────────────────────────────
+# ─── DASHBOARD (updated: show budget items and per-item spent) ─────────────
 @app.route('/dashboard')
 def dashboard():
     if 'user' not in session:
@@ -90,50 +90,81 @@ def dashboard():
     entries = load_json(ENTRIES_FILE, default=list) or []
     budgets = load_json(BUDGETS_FILE, default=dict) or {}
 
+    # Filter entries visible and in selected month
     def keep(e):
-        # Finance Manager: may choose 'Main' or 'Building Fund'
         if role == 'Finance Manager':
-            if acct not in ('Main','Building Fund'):
-                return False
-            if e.get('account') != acct:
-                return False
-        # Department treasurers: only their own dept
+            if acct not in ('Main','Building Fund'): return False
+            if e.get('account') != acct: return False
         elif role != 'Senior Pastor':
-            if e.get('account') != dept:
-                return False
-        # Senior Pastor sees all
+            if e.get('account') != dept: return False
         try:
-            d = parse_date(e.get('date'))
+            d = parse_date(e.get('date',''))
         except Exception:
             return False
-        return d.year == y and d.month == m
+        return (d.year == y and d.month == m)
 
     month_entries = [e for e in entries if keep(e)]
 
-    total_inc = sum(float(e.get('amount',0)) for e in month_entries if e.get('type') == 'Income')
-    total_exp = sum(float(e.get('amount',0)) for e in month_entries if e.get('type') == 'Expense')
+    # Totals
+    total_inc = sum(float(e.get('amount',0)) for e in month_entries if e.get('type')=='Income')
+    total_exp = sum(float(e.get('amount',0)) for e in month_entries if e.get('type')=='Expense')
 
-    # compute budget_limit: if budgets[acct] is a dict with total, prefer that
+    # Budget lookup for current key
     key = acct if role == 'Finance Manager' else dept
-    raw_budget = budgets.get(key)
-    budget_limit = 0.0
+    raw_budget = budgets.get(key) or {}
+    # If budget is a dict with items => use that.
+    budget_total = 0.0
+    budget_items = {}
     if isinstance(raw_budget, dict):
-        budget_limit = float(raw_budget.get('total', 0.0) or 0.0)
-        # if no 'total' but has 'items', sum them
-        if budget_limit == 0.0 and raw_budget.get('items'):
+        budget_total = float(raw_budget.get('total',0) or 0)
+        budget_items = raw_budget.get('items') or {}
+        if not budget_total:  # fallback sum of items
             try:
-                budget_limit = sum(float(v) for v in raw_budget.get('items',{}).values())
+                budget_total = sum(float(v) for v in budget_items.values())
             except Exception:
-                budget_limit = 0.0
+                budget_total = 0.0
     else:
         try:
-            budget_limit = float(raw_budget or 0.0)
+            budget_total = float(raw_budget or 0.0)
         except Exception:
-            budget_limit = 0.0
+            budget_total = 0.0
 
-    remaining = budget_limit - total_exp
+    # Compute spent per budget item (based on expense entries with 'budget_item' field)
+    item_spent = {name: 0.0 for name in budget_items.keys()}
+    # Any expenses that didn't choose an item can be tallied under '(Unassigned)'
+    item_spent.setdefault('(Unassigned)', 0.0)
 
-    # chart data for whole year
+    for e in month_entries:
+        if e.get('type') == 'Expense':
+            bitem = e.get('budget_item') or '(Unassigned)'
+            try:
+                item_spent[bitem] = item_spent.get(bitem, 0.0) + float(e.get('amount',0))
+            except Exception:
+                pass
+
+    # Build a list of item rows for template: (name, budgeted, spent, remaining)
+    item_rows = []
+    for name, budgeted in budget_items.items():
+        spent = item_spent.get(name, 0.0)
+        remaining = float(budgeted) - float(spent)
+        item_rows.append({
+            'name': name,
+            'budgeted': round(float(budgeted),2),
+            'spent': round(spent,2),
+            'remaining': round(remaining,2)
+        })
+    # also include unassigned if any expenses fell there
+    if item_spent.get('(Unassigned)',0) > 0:
+        item_rows.append({
+            'name': '(Unassigned)',
+            'budgeted': 0.0,
+            'spent': round(item_spent.get('(Unassigned)',0.0),2),
+            'remaining': round(0.0 - item_spent.get('(UnAssigned)',0.0),2)
+        })
+
+    remaining_budget = budget_total - total_exp
+
+    # Chart data (same as before) but we'll add a small chart for expense vs budget too
     labels = [f"{y}-{mn:02d}" for mn in range(1,13)]
     def sum_for(lbl, kind):
         return sum(
@@ -143,7 +174,6 @@ def dashboard():
             and (role=='Senior Pastor' or e.get('account')==key)
             and str(e.get('date','')).startswith(lbl)
         )
-
     chart_inc = [sum_for(lbl,'Income') for lbl in labels]
     chart_exp = [sum_for(lbl,'Expense') for lbl in labels]
 
@@ -152,10 +182,59 @@ def dashboard():
         selected_month=m, selected_year=y, current_year=now.year,
         account=acct,
         total_income=round(total_inc,2), total_expense=round(total_exp,2),
-        balance=round(total_inc - total_exp,2), budget_limit=round(budget_limit,2),
-        remaining=round(remaining,2),
-        chart_labels=labels, chart_income=chart_inc, chart_expense=chart_exp,
-        budgets=budgets
+        budget_total=round(budget_total,2), remaining_budget=round(remaining_budget,2),
+        item_rows=item_rows,
+        chart_labels=labels, chart_income=chart_inc, chart_expense=chart_exp
+    )
+
+
+# ─── ADD EXPENSE (updated: include budget_item dropdown) ────────────────
+@app.route('/add-expense', methods=['GET','POST'])
+def add_expense():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    role = session['role']; dept = session['dept']
+
+    valid_accounts = ['Main','Building Fund'] if role == 'Finance Manager' else ([] if role=='Senior Pastor' else [dept])
+    budgets = load_json(BUDGETS_FILE, default=dict) or {}
+
+    if request.method == 'POST':
+        account = request.form.get('account') if role == 'Finance Manager' else dept
+        if account not in valid_accounts:
+            flash("Account not permitted", "danger"); return redirect(url_for('dashboard'))
+
+        # budget_item may be optional (if account has no items)
+        budget_item = request.form.get('budget_item') or None
+        try:
+            entry = {
+                'type': 'Expense',
+                'subtype': request.form.get('type',''),
+                'account': account,
+                'department': dept,
+                'description': request.form.get('description',''),
+                'date': request.form.get('date'),
+                'amount': float(request.form.get('amount') or 0),
+                'budget_item': budget_item
+            }
+        except ValueError:
+            flash("Invalid amount", "danger"); return redirect(url_for('add_expense'))
+
+        entries = load_json(ENTRIES_FILE, default=list) or []
+        entries.append(entry)
+        save_json(ENTRIES_FILE, entries)
+        flash("Expense saved", "success")
+        return redirect(url_for('dashboard'))
+
+    # GET: build budget_item choices for the selected account
+    acct_param = request.args.get('account', None)
+    account_for_form = acct_param if (role=='Finance Manager' and acct_param in valid_accounts) else (valid_accounts[0] if valid_accounts else dept)
+    budget_items = []
+    if isinstance(budgets.get(account_for_form), dict):
+        budget_items = list(budgets[account_for_form].get('items',{}).keys())
+
+    return render_template('add_expense.html',
+        valid_accounts=valid_accounts, role=role, now=datetime.now(),
+        budget_items=budget_items, account_for_form=account_for_form
     )
 
 # ─── ADD INCOME ────────────────────────────────────────────────────────────
@@ -193,42 +272,6 @@ def add_income():
         return redirect(url_for('dashboard'))
 
     return render_template('add_income.html', valid_accounts=valid_accounts, role=role, now=datetime.now())
-
-# ─── ADD EXPENSE ───────────────────────────────────────────────────────────
-@app.route('/add-expense', methods=['GET','POST'])
-def add_expense():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    role = session['role']; dept = session['dept']
-    valid_accounts = ['Main','Building Fund'] if role == 'Finance Manager' else ([] if role=='Senior Pastor' else [dept])
-
-    if request.method == 'POST':
-        account = request.form.get('account') if role == 'Finance Manager' else dept
-        if account not in valid_accounts:
-            flash("Account not permitted", "danger")
-            return redirect(url_for('dashboard'))
-
-        try:
-            entry = {
-                'type': 'Expense',
-                'subtype': request.form.get('type',''),
-                'account': account,
-                'department': dept,
-                'description': request.form.get('description',''),
-                'date': request.form.get('date'),
-                'amount': float(request.form.get('amount') or 0)
-            }
-        except ValueError:
-            flash("Invalid amount", "danger")
-            return redirect(url_for('add_expense'))
-
-        entries = load_json(ENTRIES_FILE, default=list) or []
-        entries.append(entry)
-        save_json(ENTRIES_FILE, entries)
-        flash("Expense saved", "success")
-        return redirect(url_for('dashboard'))
-
-    return render_template('add_expense.html', valid_accounts=valid_accounts, role=role, now=datetime.now())
 
 # ─── MANAGE BUDGETS ────────────────────────────────────────────────────────
 @app.route('/budgets', methods=['GET','POST'])
