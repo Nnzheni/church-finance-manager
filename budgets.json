@@ -1,8 +1,39 @@
 {
-  "Main": 65000,
-  "Building Fund": 15000,
-  "Men's Fellowship": 10000,
-  "Youth": 2500,
-  "Local Sisters Fellowship": 10000,
-  "Children Ministry": 500
+  "Main": {
+    "total": 65000,
+    "items": {
+      "Budgeted Income": 61780.2,
+      "Salaries": 35878.22,
+      "SARS": 5400,
+      "Insurance": 3877.52,
+      "ADT": 587.78,
+      "Electricity": 3544.47,
+      "GNR": 3000,
+      "Food": 500,
+      "Conf": 2000,
+      "Pastoral Support Fund": 2500,
+      "Maintenance": 1000,
+      "Reserve/Investment": 2000
+    }
+  },
+  "Building Fund": {
+    "total": 15000,
+    "items": {}
+  },
+  "Men's Fellowship": {
+    "total": 10000,
+    "items": {}
+  },
+  "Youth": {
+    "total": 2500,
+    "items": {}
+  },
+  "Local Sisters Fellowship": {
+    "total": 10000,
+    "items": {}
+  },
+  "Children Ministry": {
+    "total": 500,
+    "items": {}
+  }
 }
