@@ -3,15 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Add Income – AFM-RCA Finance Manager</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  >
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
   <div class="container mt-5" style="max-width:600px;">
     <h3 class="mb-4">➕ Add Income</h3>
-    <form method="POST" action="{{ url_for('add_income') }}">
+
+    <form method="POST" action="{{ url_for('add_income') }}" id="incomeForm" novalidate>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -21,7 +19,9 @@
       {% endif %}
       {% endwith %}
 
-      {% if role=='Finance Manager' %}
+      <!-- If finance manager, show select; otherwise template passes dept and we include a hidden input so
+           request.form['account'] always exists if your backend ever expects it. -->
+      {% if role == 'Finance Manager' %}
       <div class="mb-3">
         <label class="form-label">Account / Department</label>
         <select name="account" class="form-select" required>
@@ -30,6 +30,9 @@
           {% endfor %}
         </select>
       </div>
+      {% else %}
+      <!-- hidden fallback so server can always read account if needed -->
+      <input type="hidden" name="account" value="{{ dept }}">
       {% endif %}
 
       <div class="mb-3">
@@ -37,10 +40,14 @@
         <input
           type="number"
           step="0.01"
+          min="0.01"
           name="amount"
+          id="amount"
           class="form-control"
           required
+          placeholder="e.g. 1500.00"
         >
+        <div class="form-text">Enter the numeric amount in Rand (no commas).</div>
       </div>
 
       <div class="mb-3">
@@ -52,9 +59,7 @@
           placeholder="e.g. Tithe, Offering, Special Gift"
           required
         >
-        <div class="form-text">
-          Please enter the income category—for example Tithe, Offering, Special Gift, etc.
-        </div>
+        <div class="form-text">Please enter the income category — e.g. Tithe, Offering, Special Gift, etc.</div>
       </div>
 
       <div class="mb-3">
@@ -63,6 +68,7 @@
           type="text"
           name="description"
           class="form-control"
+          placeholder="Optional notes (who gave, event, etc.)"
         >
       </div>
 
@@ -78,10 +84,21 @@
       </div>
 
       <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-success">💾 Save Income</button>
+        <button type="submit" id="saveBtn" class="btn btn-success">💾 Save Income</button>
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Cancel</a>
       </div>
     </form>
   </div>
+
+  <script>
+    // tiny client-side guard so users can't submit 0 or blank amount by accident
+    document.getElementById('incomeForm').addEventListener('submit', function(e){
+      const amt = parseFloat(document.getElementById('amount').value || 0);
+      if (isNaN(amt) || amt <= 0) {
+        e.preventDefault();
+        alert('Please enter a valid amount greater than 0.');
+      }
+    });
+  </script>
 </body>
 </html>
