@@ -1,16 +1,13 @@
 {
   "Main": {
-    "total": 65000,
+    "total": 25000,
     "items": {
-      "Budgeted Income": 61780.2,
-      "Salaries": 35878.22,
-      "SARS": 5400,
-      "Insurance": 3877.52,
-      "ADT": 587.78,
-      "Electricity": 3544.47,
-      "GNR": 3000,
+      "Budgeted Income": 25000,
+      "Salaries": 5000,
+      "SARS": 0,
+      "Insurance": 300,
+      "Electricity": 600,
       "Food": 500,
-      "Conf": 2000,
       "Pastoral Support Fund": 2500,
       "Maintenance": 1000,
       "Reserve/Investment": 2000
