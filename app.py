@@ -33,23 +33,21 @@ if not os.path.exists(BUDGETS_FILE):
     # example structure (you can replace contents later)
     save_json(BUDGETS_FILE, {
         "Main": {
-            "total": 65000,
+            "total": 25000,
             "items": {
-                "Budgeted Income": 61780.2,
-                "Salaries": 35878.22,
-                "SARS": 5400,
-                "Insurance": 3877.52,
-                "ADT": 587.78,
-                "Electricity": 3544.47,
-                "GNR": 3000,
-                "Food": 500,
-                "Conf": 2000,
-                "Pastoral Support Fund": 2500,
-                "Maintenance": 1000,
-                "Reserve/Investment": 2000
+                "Budgeted Income": 25000,
+                "Salaries": 2000,
+                "SARS": 0,
+                "Insurance": 300,
+                "Security": 300,
+                "Electricity": 1000,
+                "Food": 300,
+                "Pastoral Support Fund": 1500,
+                "Maintenance": 7000,
+                "Reserve/Investment": 1000
             }
         },
-        "Building Fund": {"total": 15000, "items": {}}
+        "Building Fund": {"total": 0, "items": {}}
     })
 if not os.path.exists(ENTRIES_FILE):
     save_json(ENTRIES_FILE, [])
